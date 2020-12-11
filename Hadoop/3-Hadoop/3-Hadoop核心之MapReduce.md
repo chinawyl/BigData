@@ -297,7 +297,7 @@ hdfs dfs -cat /wordcount_out/part-r-00000
 
 ### 2.Shuffle阶段分区概述
 
-![022-Shuffle阶段分区](D:\BigData\Hadoop\3-Hadoop\images\022-Shuffle阶段分区.png)
+![022-Shuffle阶段分区](./images/022-Shuffle阶段分区.png)
 
 编写分区代码(对彩票中大于等于15和小于15的进行分组)
 
