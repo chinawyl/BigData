@@ -526,3 +526,44 @@ public class PartitionerReducer extends Reducer<Text,NullWritable,Text,NullWrita
    }                                                                                      }
 ```
 
+<br>
+
+# 五、MapReduce序列化和排序
+
+### 1.序列化概述
+
+- 序列化(Serialization)是指把结构化对象转化为字节流
+
+- 反序列化 (Deserialization) 是序列化的逆过程,把字节流转为结构化对象. 当要在进程间传递对象或持久化对象的时候, 就需要序列化对象成字节流, 反之当要将接收到或从磁盘读取 的字节流转换为对象, 就要进行反序列化
+
+- Java 的序列化 (Serializable) 是一个重量级序列化框架, 一个对象被序列化后, 会附带很多额 外的信息(各种校验信息, header, 继承体系等, 不便于在网络中高效传输. 所以, Hadoop 自己开发了一套序列化机制(Writable), 精简高效,不用像 Java 对象类一样传输多层的父子 关系, 需要哪个属性就传输哪个属性值, 大大的减少网络传输的开销 
+
+- Writable是Hadoop的序列化格式, Hadoop定义了这样一个Writable接口,一个类要支持可序列化只需实现这个接口即可
+
+- 另外Writable有一个子接口是WritableComparable,WritableComparable是既可实现序列化, 也可以对key进行比较, 我们这里可以通过自定义Key实现WritableComparable来实现 我们的排序功能
+
+### 2.排序案例概述
+
+##### 2.1数据格式
+
+```shell
+a   1 
+a   9
+b   3
+a   7 
+b   8
+b   10
+a   5
+```
+
+##### 2.2要求
+
+- 第一列按照字典顺序进行排列
+- 第一列相同的时候, 第二列按照升序进行排列
+
+##### 2.3流程
+
+![023-Shuffle阶段的排序和序列化](D:\BigData\Hadoop\3-Hadoop\images\023-Shuffle阶段的排序和序列化.png)
+
+### 3.排序案例代码编写
+
