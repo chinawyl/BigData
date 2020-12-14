@@ -29,8 +29,8 @@ public class JobMain extends Configured implements Tool {
          */
         //第一步:指定文件的读取方式和读取路径
         job.setInputFormatClass(TextInputFormat.class);
-        TextInputFormat.addInputPath(job, new Path("hdfs://node01:8020/wordcount_in")); //集群运行模式读取路径
-        //TextInputFormat.addInputPath(job, new Path("file:///D:\\mapreduce\\input")); //本地运行模式读取路径
+        TextInputFormat.addInputPath(job, new Path("hdfs://node01:8020/input/wordcount_input")); //集群运行模式读取路径
+        //TextInputFormat.addInputPath(job, new Path("file:///D:\\input\\wordcount_input")); //本地运行模式读取路径
 
 
 
@@ -54,12 +54,13 @@ public class JobMain extends Configured implements Tool {
         //第八步: 设置输出类型
         job.setOutputFormatClass(TextOutputFormat.class);
         //设置输出的路径
-        Path path = new Path("hdfs://node01:8020/wordcount_out"); //集群运行模式输出路径
+        Path path = new Path("hdfs://node01:8020/output/wordcount_output"); //集群运行模式输出路径
         TextOutputFormat.setOutputPath(job, path);
-        //TextOutputFormat.setOutputPath(job, new Path("file:///D:\\mapreduce\\output")); //本地运行模式输出路径
+        //TextOutputFormat.setOutputPath(job, new Path("file:///D:\\mapreduce\\output\\wordcount_output")); //本地运行模式输出路径
 
         //获取FileSystem
         FileSystem fileSystem = FileSystem.get(new URI("hdfs://node01:8020"), new Configuration());
+
         //判断目录是否存在
         boolean bl2 = fileSystem.exists(path);
         if(bl2){
@@ -75,6 +76,8 @@ public class JobMain extends Configured implements Tool {
 
     public static void main(String[] args) throws Exception {
         Configuration configuration = new Configuration();
+
+        //启动job任务
         int run = ToolRunner.run(configuration, new JobMain(), args);
         System.exit(run);
     }

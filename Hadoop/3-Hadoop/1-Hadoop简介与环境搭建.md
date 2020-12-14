@@ -673,7 +673,7 @@ cd /usr/BigData/hadoop-2.7.5/
 bin/hdfs namenode -format
 ```
 
-注:格式化一次就行
+##### 注:格式化只在第一次启动时运行
 
 ##### 3.5.4启动hdfs(node01)
 

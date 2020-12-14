@@ -20,13 +20,13 @@ public class JobMain extends Configured implements Tool {
         //1:创建job任务对象
         Job job = Job.getInstance(super.getConf(), "partition");
         //如果打包运行出错,则需要加该配置
-        job.setJarByClass(WordCount.JobMain.class);
+        job.setJarByClass(JobMain.class);
 
         //2:对job任务进行配置(八个步骤)
         //第一步:设置输入类和输入的路径
         job.setInputFormatClass(TextInputFormat.class);
-        TextInputFormat.addInputPath(job, new Path("hdfs://node01:8020/partition_in"));
-        //TextInputFormat.addInputPath(job, new Path("file:///D:\\partition_in"));
+        TextInputFormat.addInputPath(job, new Path("hdfs://node01:8020/input/partition_input"));
+        //TextInputFormat.addInputPath(job, new Path("file:///D:\\input\\partition_input"));
 
         //第二步:设置Mapper类和数据类型（K2和V2）
         job.setMapperClass(PartitionMapper.class);
@@ -47,16 +47,18 @@ public class JobMain extends Configured implements Tool {
 
         //第八步:指定输出类和输出路径
         job.setOutputFormatClass(TextOutputFormat.class);
-        TextOutputFormat.setOutputPath(job, new Path("hdfs://node01:8020/partition_out"));
-        //TextOutputFormat.setOutputPath(job, new Path("file:///D:\\partition_out"));
+        TextOutputFormat.setOutputPath(job, new Path("hdfs://node01:8020/output/partition_output"));
+        //TextOutputFormat.setOutputPath(job, new Path("file:///D:\\output\\partition_output"));
 
         //获取FileSystem
         FileSystem fileSystem = FileSystem.get(new URI("hdfs://node01:8020"), new Configuration());
+
         //判断目录是否存在
-        boolean bl2 = fileSystem.exists(new Path("hdfs://node01:8020/partition_out"));
+        Path path = new Path("hdfs://node01:8020/output/partition_output");
+        boolean bl2 = fileSystem.exists(path);
         if(bl2){
             //删除目标目录
-            fileSystem.delete(new Path("hdfs://node01:8020/partition_out"), true);
+            fileSystem.delete(path, true);
         }
 
         //3:等待任务结束
@@ -67,6 +69,7 @@ public class JobMain extends Configured implements Tool {
 
     public static void main(String[] args) throws Exception {
         Configuration configuration = new Configuration();
+
         //启动job任务
         int run = ToolRunner.run(configuration, new JobMain(), args);
         System.exit(run);

@@ -60,17 +60,18 @@ Map和Reduce为程序员提供了一个清晰的操作接口抽象描述。MapRe
 
 ![021-MapReduce编程流程](./images/021-MapReduce编程流程.png)
 
-# 二、WordCount案例
-### 1.数据格式准备
+### 5.WordCount案例
 
-##### 1.1创建文件
+##### 5.1 数据准备
+
+`创建文件`
 
 ```shell
 cd /export/servers 
 vim wordcount.txt
 ```
 
-##### 1.2往文件放入内容
+`往文件放入内容`
 
 ```shell
 hello,world,hadoop
@@ -79,14 +80,14 @@ kitty,tom,jerry,world
 hadoop
 ```
 
-##### 1.3上传到HDFS
+`在HDFS创建输入文件夹并上传文件`
 
 ```shell
-hdfs dfs -mkdir /wordcount_in/
-hdfs dfs -put wordcount.txt /wordcount_in/
+hdfs dfs -mkdir -p /input/wordcount_input
+hdfs dfs -put wordcount.txt /input/wordcount_input
 ```
 
-### 2.Mapper编写
+##### 5.2 Mapper编写
 
 ```java
 package WordCount;
@@ -132,7 +133,7 @@ public class WordCountMapper extends Mapper<LongWritable, Text, Text, LongWritab
 }
 ```
 
-### 3.Reducer编写
+##### 5.3 Reducer编写
 
 ```java
 package WordCount;
@@ -173,7 +174,7 @@ public class WordCountReducer extends Reducer<Text, LongWritable, Text, LongWrit
 }
 ```
 
-### 4.主类编写(提交job)
+##### 5.4 主类JobMain编写
 
 ```java
 package WordCount;
@@ -207,8 +208,8 @@ public class JobMain extends Configured implements Tool {
          */
         //第一步:指定文件的读取方式和读取路径
         job.setInputFormatClass(TextInputFormat.class);
-        TextInputFormat.addInputPath(job, new Path("hdfs://node01:8020/wordcount_in")); //集群运行模式读取路径
-        //TextInputFormat.addInputPath(job, new Path("file:///D:\\mapreduce\\input")); //本地运行模式读取路径
+        TextInputFormat.addInputPath(job, new Path("hdfs://node01:8020/input/wordcount_input")); //集群运行模式读取路径
+        //TextInputFormat.addInputPath(job, new Path("file:///D:\\input\\wordcount_input")); //本地运行模式读取路径
 
 
 
@@ -232,12 +233,13 @@ public class JobMain extends Configured implements Tool {
         //第八步: 设置输出类型
         job.setOutputFormatClass(TextOutputFormat.class);
         //设置输出的路径
-        Path path = new Path("hdfs://node01:8020/wordcount_out"); //集群运行模式输出路径
+        Path path = new Path("hdfs://node01:8020/output/wordcount_output"); //集群运行模式输出路径
         TextOutputFormat.setOutputPath(job, path);
-        //TextOutputFormat.setOutputPath(job, new Path("file:///D:\\mapreduce\\output")); //本地运行模式输出路径
+        //TextOutputFormat.setOutputPath(job, new Path("file:///D:\\mapreduce\\output\\wordcount_output")); //本地运行模式输出路径
 
         //获取FileSystem
         FileSystem fileSystem = FileSystem.get(new URI("hdfs://node01:8020"), new Configuration());
+
         //判断目录是否存在
         boolean bl2 = fileSystem.exists(path);
         if(bl2){
@@ -253,23 +255,25 @@ public class JobMain extends Configured implements Tool {
 
     public static void main(String[] args) throws Exception {
         Configuration configuration = new Configuration();
+
+        //启动job任务
         int run = ToolRunner.run(configuration, new JobMain(), args);
         System.exit(run);
     }
 }
 ```
 
-### 5.运行
+##### 5.5 运行
 
-##### 5.1idea打jar包
+`idea打jar包`
 
 点击idea右侧的Maven，选择要打包的项目，双击对应项目的Lifecycle下的package即可
 
-##### 5.2上传jar包
+`上传jar包`
 
 在target目录找到**MapReduce-1.0-SNAPSHOT.jar**包
 
-##### 5.3运行jar包
+`运行jar包`
 
 ```shell
 hadoop jar MapReduce-1.0-SNAPSHOT.jar WordCount.JobMain
@@ -277,15 +281,15 @@ hadoop jar MapReduce-1.0-SNAPSHOT.jar WordCount.JobMain
 
 ##### 注:主类路径(WordCount.JobMain)获取方式为右键点击主类Copy里的Copy Reference
 
-##### 5.4读取生成的文件
+`读取生成的文件`
 
 ```shell
-hdfs dfs -cat /wordcount_out/part-r-00000
+hdfs dfs -cat /output/wordcount_output/part-r-00000
 ```
 
 <br>
 
-# 三、MapReduce分区
+# 二、MapReduce分区
 
 ### 1.分区概述
 
@@ -301,7 +305,18 @@ hdfs dfs -cat /wordcount_out/part-r-00000
 
 编写分区代码(对彩票中大于等于15和小于15的进行分组)
 
-### 3.Mapper编写
+### 3.分区案例
+
+##### 3.1 数据准备
+
+`在HDFS创建输入文件夹并上传文件`
+
+```shell
+hdfs dfs -mkdir -p /input/partition_input
+hdfs dfs -put partition.csv /input/partition_input
+```
+
+##### 3.2 Mapper编写
 
 ```java
 package Partition;
@@ -328,7 +343,7 @@ public class PartitionMapper extends Mapper<LongWritable, Text,Text, NullWritabl
 }
 ```
 
-### 4.Partitioner编写
+##### 3.3 Partitioner编写
 
 ```java
 package Partition;
@@ -354,7 +369,7 @@ public class MyPartitioner extends Partitioner<Text,NullWritable> {
 }
 ```
 
-### 5.Reducer编写
+##### 3.4 Reducer编写
 
 ```java
 package Partition;
@@ -380,7 +395,7 @@ public class PartitionerReducer extends Reducer<Text,NullWritable,Text,NullWrita
 }
 ```
 
-### 6.主类编写(提交job)
+##### 3.5主类JobMain编写
 
 ```java
 package Partition;
@@ -405,13 +420,13 @@ public class JobMain extends Configured implements Tool {
         //1:创建job任务对象
         Job job = Job.getInstance(super.getConf(), "partition");
         //如果打包运行出错,则需要加该配置
-        job.setJarByClass(WordCount.JobMain.class);
+        job.setJarByClass(JobMain.class);
 
         //2:对job任务进行配置(八个步骤)
         //第一步:设置输入类和输入的路径
         job.setInputFormatClass(TextInputFormat.class);
-        TextInputFormat.addInputPath(job, new Path("hdfs://node01:8020/partition_in"));
-        //TextInputFormat.addInputPath(job, new Path("file:///D:\\partition_in"));
+        TextInputFormat.addInputPath(job, new Path("hdfs://node01:8020/input/partition_input"));
+        //TextInputFormat.addInputPath(job, new Path("file:///D:\\input\\partition_input"));
 
         //第二步:设置Mapper类和数据类型（K2和V2）
         job.setMapperClass(PartitionMapper.class);
@@ -432,16 +447,18 @@ public class JobMain extends Configured implements Tool {
 
         //第八步:指定输出类和输出路径
         job.setOutputFormatClass(TextOutputFormat.class);
-        TextOutputFormat.setOutputPath(job, new Path("hdfs://node01:8020/partition_out"));
-        //TextOutputFormat.setOutputPath(job, new Path("file:///D:\\partition_out"));
+        TextOutputFormat.setOutputPath(job, new Path("hdfs://node01:8020/output/partition_output"));
+        //TextOutputFormat.setOutputPath(job, new Path("file:///D:\\output\\partition_output"));
 
         //获取FileSystem
         FileSystem fileSystem = FileSystem.get(new URI("hdfs://node01:8020"), new Configuration());
+
         //判断目录是否存在
-        boolean bl2 = fileSystem.exists(new Path("hdfs://node01:8020/partition_out"));
+        Path path = new Path("hdfs://node01:8020/output/partition_output");
+        boolean bl2 = fileSystem.exists(path);
         if(bl2){
             //删除目标目录
-            fileSystem.delete(new Path("hdfs://node01:8020/partition_out"), true);
+            fileSystem.delete(path, true);
         }
 
         //3:等待任务结束
@@ -452,6 +469,7 @@ public class JobMain extends Configured implements Tool {
 
     public static void main(String[] args) throws Exception {
         Configuration configuration = new Configuration();
+
         //启动job任务
         int run = ToolRunner.run(configuration, new JobMain(), args);
         System.exit(run);
@@ -459,17 +477,17 @@ public class JobMain extends Configured implements Tool {
 }
 ```
 
-### 7.运行
+##### 3.6运行
 
-##### 7.1idea打jar包
+`idea打jar包`
 
-点击idea右侧的Maven，选择要打包的项目，双击对应项目的Lifecycle下的clean后再再点击package
+点击idea右侧的Maven，选择要打包的项目，双击对应项目的Lifecycle下的**clean**后再点击**package**
 
-##### 7.2上传jar包
+`上传jar包`
 
 在target目录找到**MapReduce-1.0-SNAPSHOT.jar**包
 
-##### 5.3运行jar包
+`运行jar包`
 
 ```shell
 hadoop jar MapReduce-1.0-SNAPSHOT.jar Partition.JobMain
@@ -477,17 +495,17 @@ hadoop jar MapReduce-1.0-SNAPSHOT.jar Partition.JobMain
 
 ##### 注:主类路径(Partition.JobMain)获取方式为右键点击主类Copy里的Copy Reference
 
-##### 5.4读取生成的文件
+`读取生成的文件`
 
 ```shell
-hdfs dfs -cat /partition_out/part-r-00000 #小于15
+hdfs dfs -cat /output/partition_output/part-r-00000 #小于15
 
-hdfs dfs -cat /partition_out/part-r-00001 #大于15
+hdfs dfs -cat /output/partition_output/part-r-00001 #大于15
 ```
 
 <br>
 
-# 四、MapReduce的计数器
+# 三、MapReduce的计数器
 
 ### 1.概述
 
@@ -504,7 +522,7 @@ hdfs dfs -cat /partition_out/part-r-00001 #大于15
 
 ### 3.自定义计数器
 
-##### 3.1方式一:通过context上下文对象获取计数器，通过context上下文对象，在map端使用计数器进行统计
+##### 3.1 方式一:通过context上下文对象获取计数器，通过context上下文对象，在map端使用计数器进行统计
 
 ```java
 public class PartitionMapper  extends Mapper<LongWritable,Text,Text,NullWritable>{    
@@ -516,7 +534,7 @@ public class PartitionMapper  extends Mapper<LongWritable,Text,Text,NullWritabl
 }
 ```
 
-##### 3.2方式二:通过enum枚举类型来定义计数器统计reduce端数据的输入的key有多少个
+##### 3.2 方式二:通过enum枚举类型来定义计数器统计reduce端数据的输入的key有多少个
 
 ```java
 public class PartitionerReducer extends Reducer<Text,NullWritable,Text,NullWritable> {   	public static enum Counter{       
@@ -528,7 +546,7 @@ public class PartitionerReducer extends Reducer<Text,NullWritable,Text,NullWrita
 
 <br>
 
-# 五、MapReduce序列化和排序
+# 四、MapReduce序列化和排序
 
 ### 1.序列化概述
 
