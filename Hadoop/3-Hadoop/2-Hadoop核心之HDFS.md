@@ -6,19 +6,19 @@ HDFS（**Hadoop Distributed File System**）是 Apache Hadoop 项目的一个子
 
 ### 2.HDFS优点
 
-##### 2.1高容错性
+##### 2.1 高容错性
 
 1) 数据自动保存多个副本。它通过增加副本的形式，提高容错性。
 
 2) 某一个副本丢失以后，它可以自动恢复，这是由 HDFS 内部机制实现的，我们不必关心。
 
-##### 2.2适合批处理
+##### 2.2 适合批处理
 
 1) 它是通过移动计算而不是移动数据。
 
 2) 它会把数据位置暴露给计算框架。
 
-##### 2.3适合大数据处理
+##### 2.3 适合大数据处理
 
 1) 数据规模：能够处理数据规模达到 GB、TB、甚至PB级别的数据。
 
@@ -26,13 +26,13 @@ HDFS（**Hadoop Distributed File System**）是 Apache Hadoop 项目的一个子
 
 3) 节点规模：能够处理10K节点的规模。
 
-##### 2.4流式数据访问
+##### 2.4 流式数据访问
 
 1) 一次写入，多次读取，不能修改，只能追加。
 
 2) 它能保证数据的一致性。
 
-##### 2.5可构建在廉价机器上
+##### 2.5 可构建在廉价机器上
 
 1) 它通过多副本机制，提高可靠性。
 
@@ -40,19 +40,19 @@ HDFS（**Hadoop Distributed File System**）是 Apache Hadoop 项目的一个子
 
 ### 3.HDFS缺点
 
-##### 3.1不适合低延时数据访问
+##### 3.1 不适合低延时数据访问
 
 1) 比如毫秒级的来存储数据，这是不行的，它做不到。
 
 2) 它适合高吞吐率的场景，就是在某一时间内写入大量的数据。但是它在低延时的情况  下是不行的，比如毫秒级以内读取数据，这样它是很难做到的。
 
-##### 3.2无法高效的对大量小文件进行存储
+##### 3.2 无法高效的对大量小文件进行存储
 
 1) 存储大量小文件的话，它会占用  NameNode大量的内存来存储文件、目录和块信息。这样是不可取的，因为NameNode的内存总是有限的。
 
 2) 小文件存储的寻道时间会超过读取时间，它违反了HDFS的设计目标。 改进策略
 
-##### 3.3并发写入、文件随机修改
+##### 3.3 并发写入、文件随机修改
 
 1) 一个文件只能有一个写，不允许多个线程同时写。
 
@@ -62,26 +62,26 @@ HDFS（**Hadoop Distributed File System**）是 Apache Hadoop 项目的一个子
 
 ![004-HDFS架构](./images/004-HDFS架构.png)
 
-##### 4.1Client：就是客户端
+##### 4.1 Client：就是客户端
 
 - 文件切分：文件上传 HDFS 的时候，Client 将文件切分成 一个一个的Block，然后进行存储
 - 与 NameNode 交互：获取文件的位置信息
 - 与 DataNode 交互：读取或者写入数据
 - 管理和访问HDFS：比如启动或者关闭HDFS。 
 
-##### 4.2NameNode：就是 master，它是一个主管、管理者
+##### 4.2 NameNode：就是 master，它是一个主管、管理者
 
 - 管理HDFS 的名称空间
 - 管理数据块（Block）映射信息
 - 配置副本策略
 - 处理客户端读写请求
 
-##### 4.3DataNode：就是Slave。NameNode 下达命令，DataNode 执行实际的操作
+##### 4.3 DataNode：就是Slave。NameNode 下达命令，DataNode 执行实际的操作
 
 - 存储实际的数据块
 - 执行数据块的读/写操作
 
-##### 4.4Secondary NameNode：并非 NameNode 的热备，当NameNode 挂掉的时候，它并不能马上替换 NameNode 并提供服务。
+##### 4.4 Secondary NameNode：并非 NameNode 的热备，当NameNode 挂掉的时候，它并不能马上替换 NameNode 并提供服务。
 
 - 辅助NameNode，分担其工作量
 - 定期合并 fsimage和fsedits，并推送给NameNode
@@ -89,44 +89,44 @@ HDFS（**Hadoop Distributed File System**）是 Apache Hadoop 项目的一个子
 
 ### 5.NameNode和DataNode作用
 
-#### 5.1NameNode作用
+#### 5.1 NameNode作用
 
 - NameNode在内存中保存着整个文件系统的名称空间和文件数据块的地址映射
 
 - 整个HDFS可存储的文件数受限于NameNode的内存大小 
   
 
-##### 5.1.1NameNode存储元数据信息
+##### 5.1.1 NameNode存储元数据信息
 
 文件名，文件目录结构，文件属性(生成时间，副本数，权限)每个文件的块列表，以及列表中的块与块所在的DataNode之间的地址映射关系。并且会**定期保存到本地磁盘（fsImage文件和edits文件）**
 
-##### 5.1.2NameNode文件操作
+##### 5.1.2 NameNode文件操作
 
 NameNode负责文件**元数据**的操作，DataNode负责处理文件内容的**读写请求**，数据流不经过NameNode，会询问它跟那个DataNode联系
 
-##### 5.1.3NameNode副本
+##### 5.1.3 NameNode副本
 
 文件数据块到底**存放到**哪些**DataNode**上，是由NameNode决定的，根据全局情况做出放置副本的决定
 
-##### 5.1.4NameNode心跳机制
+##### 5.1.4 NameNode心跳机制
 
 全权管理**数据块的复制**，周期性的**接受心跳和块的状态报告信息**，若接受到了心跳信息，则NameNode认为DataNode工作正常，如果在10分钟后还接受到不到DN的心跳，那么NameNode认为DataNode已经宕机 ,这时候 NameNode准备要把DN上的数据块进行重新的复制
 
-#### 5.2DataNode作用
+#### 5.2 DataNode作用
 
-##### 5.2.1Data Node 以数据块的形式存储HDFS文件
+##### 5.2.1 Data Node 以数据块的形式存储HDFS文件
 
-##### 5.2.2Data Node 响应HDFS 客户端读写请求
+##### 5.2.2 Data Node 响应HDFS 客户端读写请求
 
-##### 5.2.3Data Node 周期性向NameNode汇报心跳信息
+##### 5.2.3 Data Node 周期性向NameNode汇报心跳信息
 
-##### 5.2.4Data Node 周期性向NameNode汇报数据块信息
+##### 5.2.4 Data Node 周期性向NameNode汇报数据块信息
 
-##### 5.2.5Data Node 周期性向NameNode汇报缓存数据块信息
+##### 5.2.5 Data Node 周期性向NameNode汇报缓存数据块信息
 
 ### 6.HDFS的副本机制和机架感知 
 
-##### 6.1HDFS 文件副本机制 
+##### 6.1 HDFS 文件副本机制 
 
 在**Hadoop1**当中, 文件的**block块默认大小是64M**, **Hadoop2**当中, 文件的 **block块大小默认是128M**, block 块的大小可以通过 hdfs-site.xml 当中的配置文件进行指定
 
@@ -140,7 +140,7 @@ NameNode负责文件**元数据**的操作，DataNode负责处理文件内容的
 
 ![005-副本机制](./images/005-副本机制.png)
 
-##### 6.2机架感知
+##### 6.2 机架感知
 
 HDFS分布式文件系统的内部有一个副本存放策略：以默认的副本数=3为例：
 1、第一个副本块存本机
@@ -204,7 +204,7 @@ NameNode的所有**元数据信息**都保存在了**FsImage与Eidts文件**当�
 </property>
 ```
 
-#### 9.1FsImage和Eidts详解
+#### 9.1 FsImage和Eidts详解
 
 ##### Fslmage
 
@@ -450,9 +450,9 @@ hdfs  dfs  -chown  -R hadoop:hadoop  /install.log
 
 ## 2.高级命令操作
 
-#### 2.1文件限额配置
+#### 2.1 文件限额配置
 
-##### 2.1.1数量大小限额
+##### 2.1.1 数量大小限额
 
 创建文件夹和查看配额信息
 
@@ -478,7 +478,7 @@ hdfs dfsadmin -setQuota 2  dir      # 给该文件夹下面设置最多上传两
 hdfs dfsadmin -clrQuota /user/root/dir  # 清除文件数量限制
 ```
 
-##### 2.1.2空间大小限额
+##### 2.1.2 空间大小限额
 
  在设置空间配额时，设置的空间至少是block_size * 3大小(本环境位128M*3=384M)
 
@@ -510,7 +510,7 @@ hdfs dfs -put  /root/a.txt  /user/root/dir #上传文件
 hdfs dfsadmin -clrSpaceQuota /user/root/dir
 ```
 
-#### 2.2HDFS安全模式
+#### 2.2 HDFS安全模式
 
 安全模式是hadoop的一种**保护机制**，用于保证集群中的数据块的安全性。当集群启动的时候，会首先进入安全模式。当系统处于安全模式时会检查数据块的完整性。
 
@@ -528,7 +528,7 @@ hdfs  dfsadmin  -safemode  leave #离开安全模式
 
 #### 2.3HDFS基准测试
 
-##### 2.3.1测试写入速度
+##### 2.3.1 测试写入速度
 
 `向HDFS文件系统中写入数据,10个文件,每个文件10MB,文件存放到/benchmarks/TestDFSIO中`
 
@@ -571,9 +571,7 @@ hadoop jar /usr/BigData/hadoop-2.7.5/share/hadoop/mapreduce/hadoop-mapreduce-cli
 ~~~
 
 ## 3.JavaAPI操作
-<<<<<<< HEAD
-
-#### 3.1.创建工程和导入jar包(Maven配置)
+#### 3.1 创建工程和导入jar包(Maven配置)
 
 ```xml
 <dependencies>
@@ -637,7 +635,7 @@ hadoop jar /usr/BigData/hadoop-2.7.5/share/hadoop/mapreduce/hadoop-mapreduce-cli
     </build>
 ```
 
-#### 3.2去除日志警告信息
+#### 3.2 去除日志警告信息
 
 导入**log4j.properties**至对应项目的**resources**中
 
@@ -654,7 +652,7 @@ log4j.appender.appender=org.apache.log4j.ConsoleAppender
 log4j.appender.appender.layout=org.apache.log4j.TTCCLayout
 ```
 
-#### 3.3url访问
+#### 3.3 url访问
 
 ```java
 @Test
@@ -676,7 +674,7 @@ public void urlHDFS() throws IOException {
 }
 ```
 
-#### 3.4FileSystem访问
+#### 3.4 FileSystem访问
 
 ```java
 //获取FileSystem:方式1
@@ -732,7 +730,7 @@ public void getFileSystem4() throws URISyntaxException, IOException {
 }
 ```
 
-#### 3.5遍历所有文件
+#### 3.5 遍历所有文件
 
 ```java
 @Test
@@ -757,7 +755,7 @@ public void listFiles() throws URISyntaxException, IOException {
 }
 ```
 
-#### 3.6创建文件夹与文件
+#### 3.6 创建文件夹与文件
 
 ```java
 @Test
@@ -775,7 +773,7 @@ public void mkdirsTest() throws URISyntaxException, IOException {
 }
 ```
 
-#### 3.7文件上传
+#### 3.7 文件上传
 
 ```java
 @Test
@@ -790,7 +788,7 @@ public void uploadFile() throws URISyntaxException, IOException {
     fileSystem.close();
 ```
 
-#### 3.8文件下载
+#### 3.8 文件下载
 
 ```java
 //文件下载:方式1
@@ -828,9 +826,9 @@ public void downloadFile2() throws URISyntaxException, IOException {
 }
 ```
 
-#### 3.9HDFS的权限访问控制
+#### 3.9 HDFS的权限访问控制
 
-##### 3.9.1配置hdfs-site.xml
+##### 3.9.1 配置hdfs-site.xml
 
 ```xml
 <!-- 设置HDFS的文件权限-->
@@ -840,7 +838,7 @@ public void downloadFile2() throws URISyntaxException, IOException {
 </property>
 ```
 
-##### 3.9.2伪造用户测试下载
+##### 3.9.2 伪造用户测试下载
 
 ```java
 @Test
@@ -856,9 +854,9 @@ public void accessRight() throws URISyntaxException, IOException, InterruptedExc
 }
 ```
 
-#### 3.10小文件合并(本地小文件合并到HDFS系统)
+#### 3.10 小文件合并(本地小文件合并到HDFS系统)
 
-##### 3.10.1命令实现
+##### 3.10.1 命令实现
 
 ```shell
 cd /usr/BigData
@@ -866,7 +864,7 @@ cd /usr/BigData
 hdfs dfs -getmerge /config/*.xml ./hello.xml
 ```
 
-##### 3.10.2JavaApi实现
+##### 3.10.2 JavaApi实现
 
 ```java
 @Test
@@ -905,12 +903,12 @@ public void mergeFile() throws URISyntaxException, IOException, InterruptedExcep
 
 ## 1.HDFS高可用机制
 
-#### 1.1高可用机制介绍
+#### 1.1 高可用机制介绍
 
 - 在Hadoop中，NameNode所处的位置是非常重要的，整个HDFS文件系统的元数据信息都由NameNode 来管理，**NameNode的可用性直接决定了Hadoop的可用性**，一旦NameNode进程 不能工作了，就会影响整个集群的正常使用
 - 在典型的HA集群中，两台独立的机器被配置为NameNode。在工作集群中，NameNode机器中的一个处于**Active状态**，另一个处于**Standby状态**。**Active NameNode**负责群集中的所有**客户端操作**，而**Standby**充当从**服务器**。Standby机器保持足够的状态以提供快速故障切换
 
-#### 1.2组件介绍
+#### 1.2 组件介绍
 
 ![016-HDFS的高可用机制](./images/016-HDFS的高可用机制.png)
 
@@ -936,11 +934,11 @@ NameNode包含了HDFS的元数据信息和数据块信息（blockmap），其中
 
 ## 2.HDFS联邦机制
 
-#### 2.1联邦机制介绍
+#### 2.1 联邦机制介绍
 
 单NameNode的架构使得HDFS在集群扩展性和性能上都有潜在的问题，当集群大到一定程度后，NameNode进程使用的内存会达到上百G，NameNode成为了性能的瓶颈。因而提出了namenode水平扩展方案-- Federation
 
-#### 2.2架构
+#### 2.2 架构
 
 ![017-HDFS的联邦机制](./images/017-HDFS的联邦机制.png)
 注:HDFS Federation并没有完全解决单点故障。虽然namenode/namespace存在多个，但是从单个namenode/namespace看，仍然存在单点故障:如果某个namenode挂掉了，其管理的相应的文件便不可以访问

@@ -36,7 +36,7 @@ public class JobMain extends Configured implements Tool {
         job.setMapOutputKeyClass(SortBean.class);
         job.setMapOutputValueClass(NullWritable.class);
 
-        //第三、四、五、六
+        //第三、四(第四步排序不用在主类设置)、五、六
 
         //第七步：设置Reducer类和类型
         job.setReducerClass(SortReducer.class);

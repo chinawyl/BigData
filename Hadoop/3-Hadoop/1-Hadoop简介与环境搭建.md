@@ -114,19 +114,19 @@ storm是一个分布式的，容错的计算系统，storm属于流处理平台�
 
 ### 6.Hadoop架构
 
-##### 6.1MapReduce架构概述
+##### 6.1 MapReduce架构概述
 
 　　Mapreduce实际上就是将计算过程分类两个阶段：map和reduce
 　　　　**1）map阶段**：并行处理计算数据
 　　　　**2）reduce阶段**：对map结果进行汇总
 
-##### 6.2HDFS架构概述
+##### 6.2 HDFS架构概述
 
 　　**1）NameNode**：就像一本书的目录。存储文件的元数据:如文件名，文件目录结构，文件属性(创建时间、副本数、文件权限)，以及每个文件的块列表和块所在的dataNode等
 　　**2）DataNode**：就像一本书的详细类容，在本地文件系统存储文件块数据，以及数据的校验
 　　**3）SeconddaryNameNode**：辅助namenode工作，定期合并镜像文件和编辑日志，紧急情况下恢复NameNode
 
-##### 6.3YARN架构概述
+##### 6.3 YARN架构概述
 
 　　Yarn是管理内存调度和cpu资源分配的。
 　　**NodeManager(NM)**：常驻进程，类似于团队里面的码农，主要作用如下：
@@ -148,13 +148,13 @@ storm是一个分布式的，容错的计算系统，storm属于流处理平台�
 
 ## 1.编译apache版本的hadoop源码(hadoop-2.7.5-src.tar.gz)
 
-### 1.1准备虚拟机(centos7 64位)
+### 1.1 准备虚拟机(centos7 64位)
 
 略
 
-### 1.2关闭防火墙和selinux
+### 1.2 关闭防火墙和selinux
 
-##### 1.2.1关闭防火墙
+##### 1.2.1 关闭防火墙
 
 ```shell
 systemctl stop firewalld #停止防火墙
@@ -162,7 +162,7 @@ systemctl stop firewalld #停止防火墙
 systemctl disable firewalld #禁止防火墙
 ```
 
-##### 1.2.2关闭selinux
+##### 1.2.2 关闭selinux
 
 ```shell
 vim /etc/selinux/config
@@ -170,54 +170,54 @@ vim /etc/selinux/config
 SELINUX=disabled
 ```
 
-### 1.3配置jdk(使用1.7，不要使用1.8)
+### 1.3 配置jdk(使用1.7，不要使用1.8)
 
-##### 1.3.1创建文件夹
+##### 1.3.1 创建文件夹
 
 ```shell
 mkdir /usr/BigData/java
 ```
 
-##### 1.3.2解压jdk
+##### 1.3.2 解压jdk
 
 ```shell
 tar -zxvf jdk-7u75-linux-x64.tar.gz -C /usr/BigData/java
 ```
 
-##### 1.3.3打开配置文件
+##### 1.3.3 打开配置文件
 
 ```shell
 vim /etc/profile
 ```
 
-##### 1.3.4配置jdk环境变量
+##### 1.3.4 配置jdk环境变量
 
 ```shell
 export JAVA_HOME=/usr/BigData/java/jdk1.7.0_75
 export PATH=$JAVA_HOME/bin:$PATH
 ```
 
-##### 1.3.5刷新权限
+##### 1.3.5 刷新权限
 
 ```shell
 source /etc/profile
 ```
 
-### 1.4配置maven
+### 1.4 配置maven
 
-##### 1.4.1解压maven
+##### 1.4.1 解压maven
 
 ```shell
 tar -zxvf apache-maven-3.0.5-bin.tar.gz -C /usr/BigData
 ```
 
-##### 1.4.2打开配置文件
+##### 1.4.2 打开配置文件
 
 ```shell
 vim /etc/profile
 ```
 
-##### 1.4.3配置maven环境变量
+##### 1.4.3 配置maven环境变量
 
 ```shell
 export MAVEN_HOME=/usr/BigData/apache-maven-3.0.5
@@ -225,31 +225,31 @@ export MAVEN_OPTS="-Xms4096m -Xms4096m"
 export PATH=$MAVEN_HOME/bin:$PATH
 ```
 
-##### 1.4.4刷新权限
+##### 1.4.4 刷新权限
 
 ```shell
 source /etc/profile
 ```
 
-##### 1.4.5解压maven仓库
+##### 1.4.5 解压maven仓库
 
 ```shell
 tar -zxvf mvnrepository.tar.gz -C /usr/BigData
 ```
 
-##### 1.4.6打开maven配置文件
+##### 1.4.6 打开maven配置文件
 
 ```shell
 vim /usr/BigData/mvnrepository/apache-maven-3.0.5/conf/settings.xml 
 ```
 
-##### 1.4.7配置maven仓库目录
+##### 1.4.7 配置maven仓库目录
 
 ```xml
 <localRepository>/usr/BigData/mvnrepository</localRepository>
 ```
 
-##### 1.4.8配置maven阿里云镜像
+##### 1.4.8 配置maven阿里云镜像
 
 ```xml
 <mirror>
@@ -260,34 +260,34 @@ vim /usr/BigData/mvnrepository/apache-maven-3.0.5/conf/settings.xml
 </mirror>
 ```
 
-### 1.5配置findbugs
+### 1.5 配置findbugs
 
-##### 1.5.1解压findbugs
+##### 1.5.1 解压findbugs
 
 ```shell
 tar -zxvf findbugs-1.3.9.tar.gz -C /usr/BigData/
 ```
 
-##### 1.5.2打开配置文件
+##### 1.5.2 打开配置文件
 
 ```shell
 vim /etc/profile
 ```
 
-##### 1.5.3配置findbugs环境变量
+##### 1.5.3 配置findbugs环境变量
 
 ```shell
 export FINDBUGS_HOME=/usr/BigData/findbugs-1.3.9
 export PATH=$FINDBUGS_HOME/bin:$PATH
 ```
 
-##### 1.5.4刷新权限
+##### 1.5.4 刷新权限
 
 ```shell
 source /etc/profile
 ```
 
-### 1.6在线安装依赖
+### 1.6 在线安装依赖
 
 ```shell
 yum -y install autoconf automake libtool cmake
@@ -297,73 +297,73 @@ yum -y install lzo-devel zlib-devel gcc gcc-c++
 yum -y install bzip2-devel
 ```
 
-### 1.7安装protobuf
+### 1.7 安装protobuf
 
-##### 1.7.1解压protobuf
+##### 1.7.1 解压protobuf
 
 ```shell
 tar -zxvf protobuf-2.5.0.tar.gz -C /usr/BigData
 ```
 
-##### 1.7.2进入目录
+##### 1.7.2 进入目录
 
 ```shell
 cd /usr/BigData/protobuf-2.5.0/
 ```
 
-##### 1.7.3生成配置信息
+##### 1.7.3 生成配置信息
 
 ```shell
 ./configure
 ```
 
-##### 1.7.4编译和安装
+##### 1.7.4 编译和安装
 
 ```shell
 make && make install
 ```
 
-### 1.8安装snappy
+### 1.8 安装snappy
 
-##### 1.8.1解压snappy
+##### 1.8.1 解压snappy
 
 ```shell
 tar -zxvf snappy-1.1.1.tar.gz -C /usr/BigData/
 ```
 
-##### 1.8.2进入目录
+##### 1.8.2 进入目录
 
 ```shell
 cd /usr/BigData/snappy-1.1.1/
 ```
 
-##### 1.8.3生成配置信息
+##### 1.8.3 生成配置信息
 
 ```shell
 ./configure
 ```
 
-##### 1.8.4编译和安装
+##### 1.8.4 编译和安装
 
 ```shell
 make && make install
 ```
 
-### 1.9编译hadoop源码
+### 1.9 编译hadoop源码
 
-##### 1.9.1解压源码
+##### 1.9.1 解压源码
 
 ```shell
 tar -zxvf hadoop-2.7.5-src.tar.gz -C /usr/BigData/
 ```
 
-##### 1.9.2进入源码目录
+##### 1.9.2 进入源码目录
 
 ```shell
 cd /usr/BigData/hadoop-2.7.5-src/
 ```
 
-##### 1.9.3编译源码
+##### 1.9.3 编译源码
 
 ```shell
 mvn package -DskipTests -Pdist,native -Dtar -Drequire.snappy -e -X
@@ -371,7 +371,7 @@ mvn package -DskipTests -Pdist,native -Dtar -Drequire.snappy -e -X
 
 ##### 注:等待时间较久
 
-##### 1.9.4查看编译后安装包(hadoop-2.7.5.tar.gz)
+##### 1.9.4 查看编译后安装包(hadoop-2.7.5.tar.gz)
 
 ```shell
 cd /usr/BigData/hadoop-2.7.5-src/hadoop-dist/target/
@@ -390,19 +390,19 @@ cd /usr/BigData/hadoop-2.7.5-src/hadoop-dist/target/
 
 ## 3.安装hadoop
 
-### 3.1解压编译后压缩包
+### 3.1 解压编译后压缩包
 
 ```shell
 tar -zxvf hadoop-2.7.5.tar.gz -C /usr/BigData/
 ```
 
-### 3.2进入目录
+### 3.2 进入目录
 
 ```shell
 cd /usr/BigData/hadoop-2.7.5
 ```
 
-### 3.3验证编译后支持的算法
+### 3.3 验证编译后支持的算法
 
 ```shell
 bin/hadoop checknative
@@ -410,15 +410,15 @@ bin/hadoop checknative
 
 ![003-验证编译结果](./images/003-验证编译结果.png)
 
-### 3.4修改配置文件
+### 3.4 修改配置文件
 
-##### 3.4.1进入配置文件目录
+##### 3.4.1 进入配置文件目录
 
 ```shell
 cd /usr/BigData/hadoop-2.7.5/etc/hadoop
 ```
 
-##### 3.4.2修改core-site.xml文件
+##### 3.4.2 修改core-site.xml文件
 
 ```xml
 <configuration>
@@ -446,7 +446,7 @@ cd /usr/BigData/hadoop-2.7.5/etc/hadoop
 </configuration>
 ```
 
-##### 3.4.3修改hdfs-site.xml文件
+##### 3.4.3 修改hdfs-site.xml文件
 
 ```xml
 <configuration>
@@ -506,14 +506,14 @@ cd /usr/BigData/hadoop-2.7.5/etc/hadoop
 </configuration>
 ```
 
-##### 3.4.4修改hadoop-env.sh文件
+##### 3.4.4 修改hadoop-env.sh文件
 
 ```sh
 # The java implementation to use.
 export JAVA_HOME=/usr/java/jdk1.8.0_45
 ```
 
-##### 3.4.5修改mapred-site.xml文件
+##### 3.4.5 修改mapred-site.xml文件
 
 ```xml
 <configuration>
@@ -549,7 +549,7 @@ export JAVA_HOME=/usr/java/jdk1.8.0_45
 mv mapred-site.xml.template mapred-site.xml
 ```
 
-##### 3.4.6修改yarn-site.xml文件
+##### 3.4.6 修改yarn-site.xml文件
 
 ```xml
 <configuration>
@@ -591,13 +591,13 @@ mv mapred-site.xml.template mapred-site.xml
 </configuration>
 ```
 
-##### 3.4.7修改mapred-env.sh文件
+##### 3.4.7 修改mapred-env.sh文件
 
 ```sh
 export JAVA_HOME=/usr/java/jdk1.8.0_45
 ```
 
-##### 3.4.8修改slave文件
+##### 3.4.8 修改slave文件
 
 ```xml
 node01
@@ -605,9 +605,9 @@ node02
 node03
 ```
 
-### 3.5配置集群环境
+### 3.5 配置集群环境
 
-##### 3.5.1创建配置文件里的文件夹
+##### 3.5.1 创建配置文件里的文件夹
 
 ```shell
 mkdir -p /usr/BigData/hadoop-2.7.5/hadoopDatas/tempDatas
@@ -620,35 +620,35 @@ mkdir -p /usr/BigData/hadoop-2.7.5/hadoopDatas/snn/name
 mkdir -p /usr/BigData/hadoop-2.7.5/hadoopDatas/dfs/snn/edits
 ```
 
-##### 3.5.2分发hadoop文件
+##### 3.5.2 分发hadoop文件
 
 ```shell
 scp -r /usr/BigData/hadoop-2.7.5 node02:/usr/BigData/
 scp -r /usr/BigData/hadoop-2.7.5 node03:/usr/BigData/
 ```
 
-##### 3.5.3进入配置文件(三台主机都要进入)
+##### 3.5.3 进入配置文件(三台主机都要进入)
 
 ```shell
 vim /etc/profile
 ```
 
-##### 3.5.4配置hadoop环境变量(三台主机都要配置)
+##### 3.5.4 配置hadoop环境变量(三台主机都要配置)
 
 ```shell
 export HADOOP_HOME=/usr/BigData/hadoop-2.7.5
 export PATH=$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH
 ```
 
-##### 3.5.5刷新权限(三台主机都要刷新)
+##### 3.5.5 刷新权限(三台主机都要刷新)
 
 ```shell
 source /etc/profile
 ```
 
-### 3.6启动集群
+### 3.6 启动集群
 
-##### 3.5.1启动zookeeper
+##### 3.6.1 启动zookeeper
 
 ```shell
 #进入目录
@@ -661,27 +661,27 @@ cd /usr/BigData/zookeeper-3.4.9/bin/
 jps
 ```
 
-##### 3.5.2进入hadoop目录(node01)
+##### 3.6.2 进入hadoop目录(node01)
 
 ```shell
 cd /usr/BigData/hadoop-2.7.5/ 
 ```
 
-##### 3.5.3格式化(node01)
+##### 3.6.3 格式化(node01)
 
 ```shell
 bin/hdfs namenode -format
 ```
 
-##### 注:格式化只在第一次启动时运行
+**注:格式化只在第一次启动时运行**
 
-##### 3.5.4启动hdfs(node01)
+##### 3.6.4 启动hdfs(node01)
 
 ```shell
 sbin/start-dfs.sh
 ```
 
-##### 注:使用jps查看进程
+**注:使用jps查看进程**
 
 - node01
 
@@ -695,13 +695,13 @@ sbin/start-dfs.sh
 
   **Jps**、**QuorumPeerMain** 、**DataNode**
 
-##### 3.5.5启动yarn(node01)
+##### 3.6.5 启动yarn(node01)
 
 ```shell
 sbin/start-yarn.sh
 ```
 
-##### 注:使用jps查看进程
+**注:使用jps查看进程**
 
 - node01
 
@@ -715,13 +715,13 @@ sbin/start-yarn.sh
 
   **Jps**、**QuorumPeerMain** 、**DataNode**、 **NodeManager** 
 
-##### 3.5.6启动历史记录(node01)
+##### 3.6.6 启动历史记录(node01)
 
 ```shell
 sbin/mr-jobhistory-daemon.sh start historyserver
 ```
 
-##### 注:使用jps查看进程
+**注:使用jps查看进程**
 
 - node01
 
@@ -763,13 +763,15 @@ http://node01:8088
 
 http://node01:19888
 
-### 3.8常见问题解决方法
-##### 3.8.1DataNode启动成功但jps命令查看没有
-删除所有节点的hadoopDatas
+### 3.8 常见问题解决方法
+##### 3.8.1 DataNode启动成功但jps命令查看没有
+`删除所有节点的hadoopDatas`
+
 ```shell
 rm -rf /usr/BigData/hadoop-2.7.5/hadoopDatas/
 ```
-停止所有服务
+`停止所有服务`
+
 ```shell
 sbin/stop-dfs.sh
 
@@ -777,10 +779,12 @@ sbin/stop-yarn.sh
 
 sbin/mr-jobhistory-daemon.sh stop historyserver
 ```
-重新格式化(node01)
+`重新格式化(node01)`
+
 ```shell
 bin/hdfs namenode -format
 ```
-重新启动所有进程
-##### 3.8.2JobHistoryServer启动成功但无法通过19888访问
-重新启动如果不行同3.8.1方法
+`重新启动所有进程`
+
+##### 3.8.2 JobHistoryServer启动成功但无法通过19888访问
+`重新启动如果不行同3.8.1方法`

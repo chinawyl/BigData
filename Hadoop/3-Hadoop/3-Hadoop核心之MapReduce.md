@@ -279,7 +279,7 @@ public class JobMain extends Configured implements Tool {
 hadoop jar MapReduce-1.0-SNAPSHOT.jar WordCount.JobMain
 ```
 
-##### 注:主类路径(WordCount.JobMain)获取方式为右键点击主类Copy里的Copy Reference
+**注:主类路径(WordCount.JobMain)获取方式为右键点击主类Copy里的Copy Reference**
 
 `读取生成的文件`
 
@@ -312,7 +312,7 @@ hdfs dfs -cat /output/wordcount_output/part-r-00000
 `在HDFS创建输入文件夹并上传文件`
 
 ```shell
-hdfs dfs -mkdir -p /input/partition_input
+hdfs dfs -mkdir /input/partition_input
 hdfs dfs -put partition.csv /input/partition_input
 ```
 
@@ -493,7 +493,7 @@ public class JobMain extends Configured implements Tool {
 hadoop jar MapReduce-1.0-SNAPSHOT.jar Partition.JobMain
 ```
 
-##### 注:主类路径(Partition.JobMain)获取方式为右键点击主类Copy里的Copy Reference
+**注:主类路径(Partition.JobMain)获取方式为右键点击主类Copy里的Copy Reference**
 
 `读取生成的文件`
 
@@ -585,3 +585,296 @@ a   5
 
 ### 3.排序案例代码编写
 
+##### 3.1 数据准备
+
+`在HDFS创建输入文件夹并上传文件`
+
+```shell
+hdfs dfs -mkdir /input/sort_input
+hdfs dfs -put sort.txt /input/sort_input
+```
+
+##### 3.2 自定义类型和比较器
+
+```java
+package SortData;
+
+import org.apache.hadoop.io.WritableComparable;
+
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+
+public class SortBean implements WritableComparable<SortBean> {
+
+    private String word;
+    private int num;
+
+    public String getWord() {
+        return word;
+    }
+
+    public void setWord(String word) {
+        this.word = word;
+    }
+
+    public int getNum() {
+        return num;
+    }
+
+    public void setNum(int num) {
+        this.num = num;
+    }
+
+    @Override
+    public String toString() {
+        return word + "\t" + num;
+    }
+
+    //实现比较器，指定排序的规则
+    /*
+      规则:快速排序  归并排序
+        第一列(word)按照字典顺序进行排列  aac   aad
+        第一列相同的时候, 第二列(num)按照升序进行排列
+     */
+    @Override
+    public int compareTo(SortBean sortBean) {
+        int result = this.word.compareTo(sortBean.word); //对第一列:word排序
+        if(result == 0){ //如果第一列相同，对第二列:num排序
+            return this.num - sortBean.num;
+        }
+        return result;
+    }
+
+    //实现序列化
+    @Override
+    public void write(DataOutput dataOutput) throws IOException {
+        dataOutput.writeUTF(word);
+        dataOutput.writeInt(num);
+    }
+
+    //实现反序列化
+    @Override
+    public void readFields(DataInput dataInput) throws IOException {
+        this.word = dataInput.readUTF();
+        this.num = dataInput.readInt();
+    }
+}
+```
+
+##### 3.3 Mapper编写
+
+```java
+package SortData;
+
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+
+import java.io.IOException;
+
+public class SortMapper extends Mapper<LongWritable, Text, SortBean, NullWritable> {
+    /*
+      map方法将K1和V1转为K2和V2:
+
+      K1            V1
+      0            a  3
+      5            b  7
+      ----------------------
+      K2                         V2
+      SortBean(a  3)         NullWritable
+      SortBean(b  7)         NullWritable
+     */
+    @Override
+    protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+        //1:将行文本数据(V1)拆分,并将数据封装到SortBean对象,就可以得到K2
+        String[] split = value.toString().split("\t");
+
+        SortBean sortBean = new SortBean();
+        sortBean.setWord(split[0]);
+        sortBean.setNum(Integer.parseInt(split[1])); //string类型转int类型
+
+        //2:将K2和V2写入上下文中
+        context.write(sortBean, NullWritable.get());
+    }
+}
+```
+
+##### 3.4 Reducer编写
+
+```java
+package SortData;
+
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.mapreduce.Reducer;
+
+import java.io.IOException;
+
+public class SortReducer extends Reducer<SortBean,NullWritable,SortBean,NullWritable> {
+    //reduce方法将新的K2和V2转为K3和V3
+    @Override
+    protected void reduce(SortBean key, Iterable<NullWritable> values, Context context) throws IOException, InterruptedException {
+       context.write(key, NullWritable.get());
+    }
+}
+```
+
+##### 3.5 主类JobMain编写
+
+```java
+package SortData;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
+
+import java.net.URI;
+
+public class JobMain extends Configured implements Tool {
+    @Override
+    public int run(String[] args) throws Exception {
+        /*
+        1:创建job对象
+         */
+        Job job = Job.getInstance(super.getConf(), "sortdata");
+        //如果打包运行出错,则需要加该配置
+        job.setJarByClass(JobMain.class);
+
+        /*
+        2:配置job任务(八个步骤)
+         */
+        //第一步:设置输入类和输入的路径
+        job.setInputFormatClass(TextInputFormat.class);
+        TextInputFormat.addInputPath(job, new Path("hdfs://node01:8020/input/sort_input"));
+        //TextInputFormat.addInputPath(job, new Path("file:///D:\\input\\input\\sort_input"));
+
+        //第二步: 设置Mapper类和数据类型
+        job.setMapperClass(SortMapper.class);
+        job.setMapOutputKeyClass(SortBean.class);
+        job.setMapOutputValueClass(NullWritable.class);
+
+        //第三、四(第四步排序不用在主类设置)、五、六
+
+        //第七步：设置Reducer类和类型
+        job.setReducerClass(SortReducer.class);
+        job.setOutputKeyClass(SortBean.class);
+        job.setOutputValueClass(NullWritable.class);
+
+
+        //第八步: 设置输出类和输出的路径
+        job.setOutputFormatClass(TextOutputFormat.class);
+        TextOutputFormat.setOutputPath(job, new Path("hdfs://node01:8020/output/sort_output"));
+        //TextOutputFormat.setOutputPath(job, new Path("file:///D:\\output\\sort_output"));
+
+        //获取FileSystem
+        FileSystem fileSystem = FileSystem.get(new URI("hdfs://node01:8020"), new Configuration());
+
+        //判断目录是否存在
+        Path path = new Path("hdfs://node01:8020/output/sort_output");
+        boolean bl2 = fileSystem.exists(path);
+        if(bl2){
+            //删除目标目录
+            fileSystem.delete(path, true);
+        }
+
+        /*
+        3:等待任务结束
+         */
+        boolean bl = job.waitForCompletion(true);
+
+        return bl?0:1;
+    }
+
+    public static void main(String[] args) throws Exception {
+        Configuration configuration = new Configuration();
+
+        //启动job任务
+        int run = ToolRunner.run(configuration, new JobMain(), args);
+        System.exit(run);
+    }
+}
+```
+
+##### 3.6 运行
+
+`idea打jar包`
+
+点击idea右侧的Maven，选择要打包的项目，双击对应项目的Lifecycle下的**clean**后再点击**package**
+
+`上传jar包`
+
+在target目录找到**MapReduce-1.0-SNAPSHOT.jar**包
+
+`运行jar包`
+
+```shell
+hadoop jar MapReduce-1.0-SNAPSHOT.jar SortData.JobMain
+```
+
+**注:主类路径(Partition.JobMain)获取方式为右键点击主类Copy里的Copy Reference**
+
+`读取生成的文件`
+
+```shell
+hdfs dfs -cat /output/sort_output/part-r-00000
+```
+
+<br>
+
+# 五、MapReduce规约
+
+### 1.概念
+
+每一个map都可能会产生大量的本地输出，Combiner的作用就是**对map端的输出先做一次合并**，以减少在map 和reduce节点之间的数据传输量，以提高网络IO性能，是MapReduce的一种优化手段之一
+
+- combiner是MR程序中Mapper和Reducer之外的一种组件
+
+- combiner组件的父类就是Reducer
+
+- combiner和reducer的区别在于运行的位置
+  - Combiner是在每一个maptask所在的节点运行
+  - Reducer是接收全局所有Mapper的输出结果
+
+- combiner的意义就是对每一个maptask的输出进行局部汇总，以减小网络传输量
+
+### 2.实现步骤(WordCount案例改编)
+
+##### 2.1 Combiner编写
+
+```java
+public class MyCombiner extends Reducer<Text, LongWritable, Text, LongWritable> {
+    @Override
+    protected void reduce(Text key, Iterable<LongWritable> values, Context context) throws IOException, InterruptedException {
+        long count = 0;
+        //1:遍历集合,将集合中的数字相加，得到 V3
+        for (LongWritable value :values){
+            count += value.get();
+        }
+        //2:将 K3 和 V3 写入上下文
+        context.write(key, new LongWritable(count));
+    }
+}
+```
+
+##### 2.2 主类JobMain编写
+
+```java
+//第三、四步采用默认设置
+
+//第五步:规约(Combiner)
+job.setCombinerClass(MyCombiner.class);
+
+//第六步采用默认设置
+```
+
+<br>
+
+# 六、MapReduce综合案例
