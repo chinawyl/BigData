@@ -845,7 +845,7 @@ hdfs dfs -cat /output/sort_output/part-r-00000
 
 - combiner的意义就是对每一个maptask的输出进行局部汇总，以减小网络传输量
 
-![024-规约概念](D:\BigData\Hadoop\3-Hadoop\images\024-规约概念.png)
+![024-规约概念](./images/024-规约概念.png)
 
 ### 2.实现步骤(WordCount案例改编)
 
