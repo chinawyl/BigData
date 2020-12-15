@@ -889,7 +889,7 @@ job.setCombinerClass(MyCombiner.class);
 
 整个Map阶段流程大体为inputFile通过split被逻辑切分为多个split文件,通过Record按行读取内容给map(用户自己实现的)进行处理,数据被map处理结束之后交给OutputCollector收集器,对其结果key进行分区(默认使用hash分区)然后写入buer,每个map task都有一个内存缓冲区,存储着map的输出结果,当缓冲区快满的时候需要将缓冲区的数据以一个临时文件的方 式存放到磁盘,当整个map task结束后再对磁盘中这个map task产生的所有临时文件做合并,生成最终的正式输出文件,然后等待reduce task来拉数据
 
-![026-MapTask工作机制 ](./images/026-MapTask工作机制 .png)
+![026-MapTask工作机制](./images/026-MapTask工作机制.png)
 
 - 读取数据组件InputFormat(默认TextInputFormat)会通过getSplits方法对输入目录中文件进行逻辑切片规划得到block,**有多少个block就对应启动多少个MapTask**
 
