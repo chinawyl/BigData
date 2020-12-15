@@ -883,13 +883,13 @@ job.setCombinerClass(MyCombiner.class);
 
 ### 1.全过程
 
-![025-MapReduce工作机制-全流程](D:\BigData\Hadoop\3-Hadoop\images\025-MapReduce工作机制全流程.png)
+![025-MapReduce工作机制-全流程](./images/025-MapReduce工作机制全流程.png)
 
 ### 2.MapTask工作机制
 
 整个Map阶段流程大体为inputFile通过split被逻辑切分为多个split文件,通过Record按行读取内容给map(用户自己实现的)进行处理,数据被map处理结束之后交给OutputCollector收集器,对其结果key进行分区(默认使用hash分区)然后写入buer,每个map task都有一个内存缓冲区,存储着map的输出结果,当缓冲区快满的时候需要将缓冲区的数据以一个临时文件的方 式存放到磁盘,当整个map task结束后再对磁盘中这个map task产生的所有临时文件做合并,生成最终的正式输出文件,然后等待reduce task来拉数据
 
-![026-MapTask工作机制 ](D:\BigData\Hadoop\3-Hadoop\images\026-MapTask工作机制 .png)
+![026-MapTask工作机制 ](./images/026-MapTask工作机制 .png)
 
 - 读取数据组件InputFormat(默认TextInputFormat)会通过getSplits方法对输入目录中文件进行逻辑切片规划得到block,**有多少个block就对应启动多少个MapTask**
 
@@ -911,7 +911,7 @@ job.setCombinerClass(MyCombiner.class);
 
 Reduce大致分为**copy、sort、reduce**三个阶段。copy阶段包含一个eventFetcher来获取已完成的map列表,由Fetcher线程去copy数据,在此过程中会启动两个merge线程,分别为inMemoryMerger和 onDiskMerger,分别将内存中的数据merge到磁盘和将磁盘中的数据进行merge,待数据copy完成之后,copy阶段就完成了。sort阶段开始,sort阶段执行finalMerge操作,完成之后就是reduce阶段,调用用户定义的reduce函数进行处理
 
-![027-ReduceTask工作机制](D:\BigData\Hadoop\3-Hadoop\images\027-ReduceTask工作机制.png)
+![027-ReduceTask工作机制](./images/027-ReduceTask工作机制.png)
 
 - **Copy阶段:**简单地拉取数据。Reduce进程启动一些数据copy线程(Fetcher),通过HTTP方式请求maptask获取属于自己的文件
 
@@ -925,7 +925,7 @@ Reduce大致分为**copy、sort、reduce**三个阶段。copy阶段包含一个e
 
 map阶段处理的数据如何传递给reduce 阶段,是MapReduce框架中最关键的一个流程,这个流程就叫:洗牌、发牌 ——(核心机制:数据分区**排序、分组、规约、合并**等过程)
 
-![028-Shule工作机制](D:\BigData\Hadoop\3-Hadoop\images\028-Shule工作机制.png)
+![028-Shule工作机制](./images/028-Shule工作机制.png)
 
 Collect阶段:将 MapTask的结果输出到默认大小为100M的环形缓冲区,保存的是key/value,Partition分区信息等
 
@@ -936,4 +936,3 @@ Merge阶段:把所有溢出的临时文件进行一次合并操作,以确保一�
 Merge阶段:在ReduceTask远程复制数据的同时,会在后台开启两个线程对内存到本地的数据文件进行合并操作
 
 Sort阶段:在对数据进行合并的同时进行排序操作,由于MapTask阶段已经对数据进行了局部的排序,ReduceTask 只需保证Copy的数据的最终整体有效性即可。Shule中的缓冲区大小会影响到mapreduce程序的执行效率,缓冲区越大,磁盘io的次数越少,执行速度就越快,缓冲区的大小参数可以调整,参数:mapreduce.task.io.sort.mb默认100M
-
