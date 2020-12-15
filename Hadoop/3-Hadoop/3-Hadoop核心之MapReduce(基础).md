@@ -845,7 +845,7 @@ hdfs dfs -cat /output/sort_output/part-r-00000
 
 - combiner的意义就是对每一个maptask的输出进行局部汇总，以减小网络传输量
 
-![024-规约概念](D:\BigData\Hadoop\3-Hadoop\images\024-规约概念.png)
+![024-规约概念](./images/024-规约概念.png)
 
 ### 2.实现步骤(WordCount案例改编)
 
@@ -885,22 +885,55 @@ job.setCombinerClass(MyCombiner.class);
 
 ![025-MapReduce工作机制-全流程](D:\BigData\Hadoop\3-Hadoop\images\025-MapReduce工作机制全流程.png)
 
-### 2.MapTask工作机制 
+### 2.MapTask工作机制
+
+整个Map阶段流程大体为inputFile通过split被逻辑切分为多个split文件,通过Record按行读取内容给map(用户自己实现的)进行处理,数据被map处理结束之后交给OutputCollector收集器,对其结果key进行分区(默认使用hash分区)然后写入buer,每个map task都有一个内存缓冲区,存储着map的输出结果,当缓冲区快满的时候需要将缓冲区的数据以一个临时文件的方 式存放到磁盘,当整个map task结束后再对磁盘中这个map task产生的所有临时文件做合并,生成最终的正式输出文件,然后等待reduce task来拉数据
 
 ![026-MapTask工作机制 ](D:\BigData\Hadoop\3-Hadoop\images\026-MapTask工作机制 .png)
 
-- 读取数据组件InputFormat (默认TextInputFormat) 会通过getSplits 方法对输入目录中文件进行逻辑切片规划得到block , **有多少个block就对应启动多少个MapTask**
+- 读取数据组件InputFormat(默认TextInputFormat)会通过getSplits方法对输入目录中文件进行逻辑切片规划得到block,**有多少个block就对应启动多少个MapTask**
 
-- 将输入文件切分为block由RecordReader对象(默认是LineRecordReader)进行读取, 以\n作为分隔符, 读取一行数据, 返回<key,value>,**Key表示每行首字符偏移值, Value表示这一行文本内容**
+- 将输入文件切分为block由RecordReader对象(默认是LineRecordReader)进行读取,以\n作为分隔符,读取一行数据,返回<key,value>,**Key表示每行首字符偏移值,Value表示这一行文本内容**
 
-- 读取block返回<key,value> , 进入用户自己继承的Mapper类中,执行用户重写的map函数,**RecordReader读取一行,这里调用一次**
+- 读取block返回<key,value>,进入用户自己继承的Mapper类中,执行用户重写的map函数,**RecordReader读取一行,这里调用一次**
 
-- Mapper逻辑结束之后, 将Mapper的每条结果通过context.write进行collect数据收集在collect中,会先对其进行**分区处理,默认使用HashPartitioner**
+- Mapper逻辑结束之后,将Mapper的每条结果通过context.write进行collect数据收集在collect中,会先对其进行**分区处理,默认使用HashPartitioner**
 
-- 接下来,会将数据写入内存, 内存中这片区域叫做**环形缓冲区**, 缓冲区的作用是批量收集Mapper结果, 减少磁盘 IO的影响。我们的**Key/Value**对以及**Partition的结果**都会被写入缓冲区。写入之前,Key与Value值都会**被序列化成字节数组**
-  - 环形缓冲区其实是一个数组, 数组中存放着**Key, Value的序列化数据**和**Key, Value的元数据信息**, 包括 Partition, Key的起始位置, Value的起始位置以及Value的长度
-  - 缓冲区是有大小限制, **默认是100MB** 。当 Mapper 的输出结果很多时, 就可能会撑爆内存, 所以需要在一定条件下将缓冲区中的数据临时写入磁盘, 然后重新利用这块缓冲区.。这个从内存往磁盘写数据的过程被称为**Spill**, 中文可译为**溢写**。这个溢写是由单独线程来完成, 不影响往缓冲区写Mapper结果的线程.。溢写线程启动时不应该阻止Mapper的结果输出, 所以整个缓冲区有个**溢写的比例spill.percent**。这个比例**默认是0.8**
+- 接下来,会将数据写入内存,内存中这片区域叫做**环形缓冲区**,缓冲区的作用是批量收集Mapper结果,减少磁盘IO的影响。我们的**Key/Value**对以及**Partition的结果**都会被写入缓冲区。写入之前,Key与Value值都会**被序列化成字节数组**
+  - 环形缓冲区其实是一个数组, 数组中存放着**Key,Value的序列化数据**和**Key,Value的元数据信息**, 包括 Partition,Key的起始位置,Value的起始位置以及Value的长度
+  - 缓冲区是有大小限制, **默认是100MB** 。当Mapper的输出结果很多时,就可能会撑爆内存,所以需要在一定条件下将缓冲区中的数据临时写入磁盘, 然后重新利用这块缓冲区.。这个从内存往磁盘写数据的过程被称为**Spill**,中文可译为**溢写**。这个溢写是由单独线程来完成,不影响往缓冲区写Mapper结果的线程。溢写线程启动时不应该阻止Mapper的结果输出,所以整个缓冲区有个**溢写的比例spill.percent**。这个比例**默认是0.8**
 
-- 当溢写线程启动后, 需要对这80MB空间内的Key做排序(Sort)。 排序是MapReduce模型默认的行为, 这里的排序也是对序列化的字节做的排序
+- 当溢写线程启动后,需要对这80MB空间内的Key做排序(Sort)。排序是MapReduce模型默认的行为,这里的排序也是对序列化的字节做的排序
 
-- **合并溢写文件,** 每次溢写会在磁盘上生成一个**临时文件**(**写之前判断是否有Combine**r), 如果Mapper的输出结果真的很大, 有多次这样的溢写发生, 磁盘上相应的就会有多个临时文件存在.。当整个数据处理结束之后开始对磁盘中的临时文件进行**Merge合并**, 因为最终的文件只有一个, 写入磁盘, 并且为这个文件提供了一个索引文件, 以记录每个reduce对应数据的偏移量
+- **合并溢写文件,** 每次溢写会在磁盘上生成一个**临时文件**(**写之前判断是否有Combine**r),如果Mapper的输出结果真的很大,有多次这样的溢写发生,磁盘上相应的就会有多个临时文件存在。当整个数据处理结束之后开始对磁盘中的临时文件进行**Merge合并**,因为最终的文件只有一个,写入磁盘,并且为这个文件提供了一个索引文件,以记录每个reduce对应数据的偏移量
+
+### 3.ReduceTask工作机制
+
+Reduce大致分为**copy、sort、reduce**三个阶段。copy阶段包含一个eventFetcher来获取已完成的map列表,由Fetcher线程去copy数据,在此过程中会启动两个merge线程,分别为inMemoryMerger和 onDiskMerger,分别将内存中的数据merge到磁盘和将磁盘中的数据进行merge,待数据copy完成之后,copy阶段就完成了。sort阶段开始,sort阶段执行finalMerge操作,完成之后就是reduce阶段,调用用户定义的reduce函数进行处理
+
+![027-ReduceTask工作机制](D:\BigData\Hadoop\3-Hadoop\images\027-ReduceTask工作机制.png)
+
+- **Copy阶段:**简单地拉取数据。Reduce进程启动一些数据copy线程(Fetcher),通过HTTP方式请求maptask获取属于自己的文件
+
+- **Merge阶段:**这里的merge如map端的merge动作,只是数组中存放的是不同map端copy来的数值。Copy过来的数据会先放入内存缓冲区中,这里的缓冲区大小要比map端的更为灵活。merge有三种形式:内存到内存;内存到磁盘；磁盘到磁盘。默认情况下第一种形式不启用。当内存中的数据量到达一定阈值,就启动内存到磁盘的merge。与map端类似,这也是溢写的过程,这个过程中如果你设置有Combiner,也是会启用的,然后在磁盘中生成了众多的溢写文件。第二种merge方式一直在运行,直到没有map端的数据时才结束,然后启动第三种磁盘到磁盘的merge方式生成最终的文件
+
+- **合并排序:**把分散的数据合并成一个大的数据后,还会再对合并后的数据排序
+
+- **对排序后的键值对调用reduce方法:**键相等的键值对调用一次reduce方法,每次调用会产生零个或者多个键值对,最后把这些输出的键值对写入到HDFS文件中
+
+### 4.Shuffle工作机制
+
+map阶段处理的数据如何传递给reduce 阶段,是MapReduce框架中最关键的一个流程,这个流程就叫:洗牌、发牌 ——(核心机制:数据分区**排序、分组、规约、合并**等过程)
+
+![028-Shule工作机制](D:\BigData\Hadoop\3-Hadoop\images\028-Shule工作机制.png)
+
+Collect阶段:将 MapTask的结果输出到默认大小为100M的环形缓冲区,保存的是key/value,Partition分区信息等
+
+Spill阶段:当内存中的数据量达到一定的阀值的时候,就会将数据写入本地磁盘,在将数据写入磁盘之前需要对数据进行一次排序的操作,如果配置了combiner,还会将有相同分区号和key的数据进行排序
+
+Merge阶段:把所有溢出的临时文件进行一次合并操作,以确保一个MapTask最终只 产生一个中间数据文件Copy阶段:ReduceTask启动Fetcher线程到已经完成MapTask的节点上复制一份属于 自己的数据,这些数据默认会保存在内存的缓冲区中,当内存的缓冲区达到一定的阀值的时候,就会将数据写到磁盘之上
+
+Merge阶段:在ReduceTask远程复制数据的同时,会在后台开启两个线程对内存到本地的数据文件进行合并操作
+
+Sort阶段:在对数据进行合并的同时进行排序操作,由于MapTask阶段已经对数据进行了局部的排序,ReduceTask 只需保证Copy的数据的最终整体有效性即可。Shule中的缓冲区大小会影响到mapreduce程序的执行效率,缓冲区越大,磁盘io的次数越少,执行速度就越快,缓冲区的大小参数可以调整,参数:mapreduce.task.io.sort.mb默认100M
+
