@@ -693,6 +693,10 @@ hadoop jar MapReduce-1.0-SNAPSHOT.jar FlowCount_Partition.JobMain
 
 通过将关联的条件作为map输出的key,将两表满足join条件的数据并携带数据所来源的文件信息,发往同一个reduce task,在reduce中进行数据的串联 
 
+![030-Reduce端join操作](D:\BigData\Hadoop\3-Hadoop\images\030-Reduce端join操作.png)
+
+![031-Reduce端join操作问题](D:\BigData\Hadoop\3-Hadoop\images\031-Reduce端join操作问题.png)
+
 ### 1.数据准备
 
 `orders.txt文件内容`
@@ -719,7 +723,7 @@ hdfs dfs -put orders.txt /input/join_reduce_input
 hdfs dfs -put product.txt /input/join_reduce_input
 ```
 
-### 2. 定义Mapper
+### 2.定义Mapper
 
 ```java
 package Join_Reduce;
@@ -877,3 +881,519 @@ public class JobMain extends Configured implements Tool {
 hadoop jar MapReduce-1.0-SNAPSHOT.jar Join_Reduce.JobMain
 ```
 
+<br>
+
+# 三、MapReduce案例-Map端实现JOIN 
+
+`具体需求`
+
+查询每个商品对应订单号上的关联数据
+
+`概述`
+
+**适用于关联表中有小表的情形**
+使用分布式缓存,可以将小表分发到所有的map节点,这样,map节点就可以在本地对自己所读到的大表数据进行join并输出最终结果,可以大大提高join操作的并发度,加快处理速度 
+
+`分析`
+
+先在mapper类中预先定义好小表,进行join
+引入实际场景中的解决方案:一次加载数据库或者用
+
+![032-Map端join操作](D:\BigData\Hadoop\3-Hadoop\images\032-Map端join操作.png)
+
+### 1.数据准备
+
+`orders.txt文件内容`
+
+```shell
+#订单数据表
+1001,20150710,p0001,2
+1002,20150710,p0002,3
+```
+
+`product.txt文件内容`
+
+```shell
+#商品表
+p0001,小米5,1000,2000
+p0002,锤子T1,1000,3000
+```
+
+`在HDFS创建输入文件夹并上传文件`
+
+```she
+hdfs dfs -mkdir /cache_file
+hdfs dfs -mkdir /input/join_map_input
+hdfs dfs -put product.txt /cache_file
+hdfs dfs -put orders.txt /input/join_map_input
+```
+
+### 2.定义Mapper
+
+```java
+package Join_Map;
+
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.URI;
+import java.util.HashMap;
+
+public class MapJoinMapper extends Mapper<LongWritable,Text,Text,Text>{
+    private HashMap<String, String> map = new HashMap<>();
+
+    //第一件事情:将分布式缓存的小表数据读取到本地Map集合(只需要做一次)
+    @Override
+    protected void setup(Context context) throws IOException, InterruptedException {
+        //1:获取分布式缓存文件列表
+        URI[] cacheFiles =  context.getCacheFiles();
+
+        //2:获取指定的分布式缓存文件的文件系统(FileSystem)
+        FileSystem fileSystem = FileSystem.get(cacheFiles[0], context.getConfiguration());
+
+        //3:获取文件的输入流
+        FSDataInputStream inputStream = fileSystem.open(new Path(cacheFiles[0]));
+
+        //4:读取文件内容, 并将数据存入Map集合
+           //4.1 将字节输入流转为字符缓冲流FSDataInputStream --->BufferedReader
+        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+           //4.2 读取小表文件内容,以行位单位,并将读取的数据存入map集合
+
+        String line = null;
+        while((line = bufferedReader.readLine()) != null){
+            String[] split = line.split(",");
+            map.put(split[0], line);
+        }
+
+        //5:关闭流
+        bufferedReader.close();
+        fileSystem.close();
+    }
+
+    //第二件事情:对大表的处理业务逻辑,而且要实现大表和小表的join操作
+    @Override
+    protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+            //1:从行文本数据中获取商品的id: p0001 , p0002  得到了K2
+            String[] split = value.toString().split(",");
+            String productId = split[2];  //K2
+
+            //2:在Map集合中,将商品的id作为键,获取值(商品的行文本数据) ,将value和值拼接,得到V2
+            String productLine = map.get(productId);
+            String valueLine = productLine+"\t"+value.toString(); //V2
+
+            //3:将K2和V2写入上下文中
+            context.write(new Text(productId), new Text(valueLine));
+    }
+}
+```
+
+### 3.定义主类
+
+```java
+package Join_Map;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.filecache.DistributedCache;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
+
+import java.net.URI;
+
+public class JobMain extends Configured implements Tool{
+    @Override
+    public int run(String[] args) throws Exception {
+        //1:获取job对象
+        Job job = Job.getInstance(super.getConf(), "join_map");
+        //如果打包运行出错,则需要加该配置
+        job.setJarByClass(JobMain.class);
+
+        //2:设置job对象(将小表放在分布式缓存中)
+            //将小表放在分布式缓存中
+            // DistributedCache.addCacheFile(new URI("hdfs://node01:8020/input/join_map_input/product.txt"), super.getConf());
+            job.addCacheFile(new URI("hdfs://node01:8020/cache_file/product.txt"));
+
+            //第一步:设置输入类和输入的路径
+            job.setInputFormatClass(TextInputFormat.class);
+            TextInputFormat.addInputPath(job, new Path("hdfs://node01:8020/input/join_map_input"));
+            //TextInputFormat.addInputPath(job, new Path("file:///D:\\input\\join_map_input"));
+
+            //第二步:设置Mapper类和数据类型
+            job.setMapperClass(MapJoinMapper.class);
+            job.setMapOutputKeyClass(Text.class);
+            job.setMapOutputValueClass(Text.class);
+
+            //第八步:设置输出类和输出路径
+            job.setOutputFormatClass(TextOutputFormat.class);
+            TextOutputFormat.setOutputPath(job, new Path("hdfs://node01:8020/output/join_map_output"));
+            //TextOutputFormat.setOutputPath(job, new Path("file:///D:\\output\\join_map_output"));
+
+        //3:等待任务结束
+        boolean bl = job.waitForCompletion(true);
+        return bl ? 0 :1;
+    }
+
+    public static void main(String[] args) throws Exception {
+        Configuration configuration = new Configuration();
+
+        //启动job任务
+        int run = ToolRunner.run(configuration, new JobMain(), args);
+        System.exit(run);
+    }
+}
+```
+
+### 4.运行
+
+```shell
+hadoop jar MapReduce-1.0-SNAPSHOT.jar Join_Map.JobMain
+```
+
+<br>
+
+# 四、MapReduce案例-求共同好友 
+
+`具体需求`
+
+求出哪些人两两之间有共同好友,及他俩的共同好友都有谁
+
+![033-求共同好友](D:\BigData\Hadoop\3-Hadoop\images\033-求共同好友.png)
+
+## 第一个MapReduce
+
+### 1.数据准备
+
+`friends.txt文件内容`
+
+以下是qq的好友列表数据,冒号前是一个用户,冒号后是该用户的所有好友(**数据中的好友关系是单向的**)
+
+```shell
+A:B,C,D,F,E,O
+B:A,C,E,K
+C:A,B,D,E,I 
+D:A,E,F,L
+E:B,C,D,M,L
+F:A,B,C,D,E,O,M
+G:A,C,D,E,F
+H:A,C,D,E,O
+I:A,O
+J:B,O
+K:A,C,D
+L:D,E,F
+M:E,F,G
+O:A,H,I,J
+```
+
+`在HDFS创建输入文件夹并上传文件`
+
+```shell
+hdfs dfs -mkdir /input/commonfriends_step1_input
+hdfs dfs -put friends.txt /input/commonfriends_step1_input
+```
+
+### 2.定义Mapper
+
+```java
+package CommonFriends_Step1;
+
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+
+import java.io.IOException;
+
+public class Step1Mapper extends Mapper<LongWritable,Text,Text,Text> {
+    @Override
+    protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+         //1:以冒号拆分行文本数据: 冒号左边就是V2
+        String[] split = value.toString().split(":");
+        String userStr = split[0];
+
+        //2:将冒号右边的字符串以逗号拆分,每个成员就是K2
+        String[] split1 = split[1].split(",");
+        for (String s : split1) {
+            //3:将K2和v2写入上下文中
+            context.write(new Text(s), new Text(userStr));
+        }
+    }
+}
+```
+
+### 3.定义Reducer
+
+```java
+package CommonFriends_Step1;
+
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Reducer;
+
+import java.io.IOException;
+
+public class Step1Reducer extends Reducer<Text,Text,Text,Text> {
+    @Override
+    protected void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+        //1:遍历集合,并将每一个元素拼接,得到K3
+        StringBuffer buffer = new StringBuffer();
+
+        for (Text value : values) {
+            buffer.append(value.toString()).append("-");
+        }
+
+        //2:K2就是V3
+
+        //3:将K3和V3写入上下文中
+        context.write(new Text(buffer.toString()), key);
+    }
+}
+```
+
+### 4.定义主类
+
+```java
+package CommonFriends_Step1;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
+
+public class JobMain extends Configured implements Tool {
+    @Override
+    public int run(String[] args) throws Exception {
+        //1:获取Job对象
+        Job job = Job.getInstance(super.getConf(), "commonfriends_step1");
+        //如果打包运行出错,则需要加该配置
+        job.setJarByClass(JobMain.class);
+
+        //2:设置job任务
+            //第一步:设置输入类和输入路径
+            job.setInputFormatClass(TextInputFormat.class);
+            TextInputFormat.addInputPath(job, new Path("hdfs://node01:8020/input/commonfriends_step1_input"));
+            //TextInputFormat.addInputPath(job, new Path("file:///D:\\input\\commonfriends_step1_input"));
+
+            //第二步:设置Mapper类和数据类型
+            job.setMapperClass(Step1Mapper.class);
+            job.setMapOutputKeyClass(Text.class);
+            job.setMapOutputValueClass(Text.class);
+
+            //第三、四、五、六
+
+            //第七步:设置Reducer类和数据类型
+            job.setReducerClass(Step1Reducer.class);
+            job.setOutputKeyClass(Text.class);
+            job.setOutputValueClass(Text.class);
+
+            //第八步:设置输出类和输出的路径
+            job.setOutputFormatClass(TextOutputFormat.class);
+            TextOutputFormat.setOutputPath(job, new Path("hdfs://node01:8020/output/commonfriends_step1_output"));
+            //TextOutputFormat.setOutputPath(job, new Path("file:///D:\\output\\commonfriends_step1_output"));
+
+        //3:等待job任务结束
+        boolean bl = job.waitForCompletion(true);
+
+        return bl ? 0: 1;
+    }
+
+    public static void main(String[] args) throws Exception {
+        Configuration configuration = new Configuration();
+
+        //启动job任务
+        int run = ToolRunner.run(configuration, new JobMain(), args);
+        System.exit(run);
+    }
+}
+```
+
+### 5.运行
+
+```shell
+hadoop jar MapReduce-1.0-SNAPSHOT.jar CommonFriends_Step1.JobMain
+```
+
+## 第二个MapReduce
+
+### 1.数据准备
+
+`part-r-00000文件内容`
+
+来源于第一个MapReduce的**/outputcommonfriends_step2_output/part-r-00000**文件
+
+`在HDFS创建输入文件夹并上传文件`
+
+```shell
+hdfs dfs -mkdir /input/commonfriends_step2_input
+hdfs dfs -put part-r-00000 /input/commonfriends_step2_input
+```
+
+### 2.定义Mapper
+
+```java
+package CommonFriends_Step2;
+
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+
+import java.io.IOException;
+import java.util.Arrays;
+
+public class Step2Mapper extends Mapper<LongWritable,Text,Text,Text> {
+    /*
+     K1           V1
+
+     0            A-F-C-J-E-	B
+    ----------------------------------
+
+     K2             V2
+     A-C            B
+     A-E            B
+     A-F            B
+     C-E            B
+     */
+    @Override
+    protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+        //1:拆分行文本数据,结果的第二部分可以得到V2
+        String[] split = value.toString().split("\t");
+        String   friendStr =split[1];
+
+        //2:继续以'-'为分隔符拆分行文本数据第一部分,得到数组
+        String[] userArray = split[0].split("-");
+
+        //3:对数组做一个排序
+        Arrays.sort(userArray);
+
+        //4:对数组中的元素进行两两组合,得到K2
+        /*
+          A-E-C-J ----->  A  C  E
+
+          A  C  E
+            A  C  E
+         */
+        for (int i = 0; i <userArray.length -1 ; i++) {
+            for (int j = i+1; j  < userArray.length ; j++) {
+                //5:将K2和V2写入上下文中
+                context.write(new Text(userArray[i] +"-"+userArray[j]), new Text(friendStr));
+            }
+        }
+    }
+}
+```
+
+### 3.定义Reducer
+
+```java
+package CommonFriends_Step2;
+
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Reducer;
+
+import java.io.IOException;
+
+public class Step2Reducer extends Reducer<Text,Text,Text,Text> {
+    @Override
+    protected void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+        //1:原来的K2就是K3
+        //2:将集合进行遍历,将集合中的元素拼接,得到V3
+		int count = 0;
+        StringBuffer buffer = new StringBuffer();
+        for (Text value : values) {
+            buffer.append(value.toString()).append("-");
+            count++;
+        }
+
+        //将最后一位-去除
+        String str = buffer.toString();
+        String strs = "";
+        if(str.endsWith("-")){
+            strs = str.substring(0,str.length() - 1);
+        }
+        //3:将K3和V3写入上下文中
+        context.write(key, new Text(count + "\t" + strs));
+    }
+}
+```
+
+### 4.定义主类
+
+```java
+package CommonFriends_Step2;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
+
+
+public class JobMain extends Configured implements Tool {
+    @Override
+    public int run(String[] args) throws Exception {
+        //1:获取Job对象
+        Job job = Job.getInstance(super.getConf(), "commonfriends_step2_job");
+        job.setJarByClass(JobMain.class);
+
+        //2:设置job任务
+            //第一步:设置输入类和输入路径
+            job.setInputFormatClass(TextInputFormat.class);
+            TextInputFormat.addInputPath(job, new Path("hdfs://node01:8020/input/commonfriends_step2_input"));
+            //TextInputFormat.addInputPath(job, new Path("file:///D:\\input\\commonfriends_step2_input"));
+
+            //第二步:设置Mapper类和数据类型
+            job.setMapperClass(Step2Mapper.class);
+            job.setMapOutputKeyClass(Text.class);
+            job.setMapOutputValueClass(Text.class);
+
+            //第三、四、五、六
+
+            //第七步:设置Reducer类和数据类型
+            job.setReducerClass(Step2Reducer.class);
+            job.setOutputKeyClass(Text.class);
+            job.setOutputValueClass(Text.class);
+
+            //第八步:设置输出类和输出的路径
+            job.setOutputFormatClass(TextOutputFormat.class);
+            TextOutputFormat.setOutputPath(job, new Path("hdfs://node01:8020/output/commonfriends_step2_output"));
+            //TextOutputFormat.setOutputPath(job, new Path("file:///D:\\output\\commonfriends_step2_output"));
+
+        //3:等待job任务结束
+        boolean bl = job.waitForCompletion(true);
+
+        return bl ? 0: 1;
+    }
+
+    public static void main(String[] args) throws Exception {
+        Configuration configuration = new Configuration();
+
+        //启动job任务
+        int run = ToolRunner.run(configuration, new JobMain(), args);
+        System.exit(run);
+    }
+}
+```
+
+### 5.运行
+
+```shell
+hadoop jar MapReduce-1.0-SNAPSHOT.jar CommonFriends_Step2.JobMain
+```

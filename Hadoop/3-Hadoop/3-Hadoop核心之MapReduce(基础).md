@@ -939,4 +939,3 @@ map阶段处理的数据如何传递给reduce 阶段,是MapReduce框架中最关
 - **Merge阶段:**在ReduceTask远程复制数据的同时,会在后台开启两个线程对内存到本地的数据文件进行合并操作
 
 - **Sort阶段:**在对数据进行合并的同时进行排序操作,由于MapTask阶段已经对数据进行了局部的排序,ReduceTask 只需保证Copy的数据的最终整体有效性即可。Shule中的缓冲区大小会影响到mapreduce程序的执行效率,缓冲区越大,磁盘io的次数越少,执行速度就越快,缓冲区的大小参数可以调整,参数(mapreduce.task.io.sort.mb)默认为100M
-
