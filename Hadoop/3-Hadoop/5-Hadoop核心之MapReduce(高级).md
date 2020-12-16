@@ -16,7 +16,7 @@
 
 自定义一个InputFormat,改写RecordReader,实现一次读取一个完整文件封装为KV,在输出时使用SequenceFileOutPutFormat输出合并文件
 
-![034-自定义InputFormat](D:\BigData\Hadoop\3-Hadoop\images\034-自定义InputFormat.png)
+![034-自定义InputFormat](./images/034-自定义InputFormat.png)
 
 ## 数据内容
 
@@ -271,7 +271,7 @@ public class JobMain extends Configured implements Tool {
 
 在mapreduce中访问外部资源,自定义outputformat,改写其中的recordwriter,改写具体输出数据的方法write() 
 
-![035-自定义OutputFormat](D:\BigData\Hadoop\3-Hadoop\images\035-自定义OutputFormat.png)
+![035-自定义OutputFormat](./images/035-自定义OutputFormat.png)
 
 ## 数据内容
 
