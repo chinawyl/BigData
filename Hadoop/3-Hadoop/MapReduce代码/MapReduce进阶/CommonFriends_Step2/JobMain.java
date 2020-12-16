@@ -15,7 +15,7 @@ public class JobMain extends Configured implements Tool {
     @Override
     public int run(String[] args) throws Exception {
         //1:获取Job对象
-        Job job = Job.getInstance(super.getConf(), "commonfriends_step2_job");
+        Job job = Job.getInstance(super.getConf(), "commonfriends_step2");
         job.setJarByClass(JobMain.class);
 
         //2:设置job任务
