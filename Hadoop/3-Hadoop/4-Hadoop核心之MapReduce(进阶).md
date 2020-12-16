@@ -18,7 +18,7 @@
 
 `data_flow文件字段说明`
 
-![029-data_flow文件字段说明](D:\BigData\Hadoop\3-Hadoop\images\029-data_flow文件字段说明.png)
+![029-data_flow文件字段说明](./images/029-data_flow文件字段说明.png)
 
 `在HDFS创建输入文件夹并上传文件`
 
@@ -693,9 +693,9 @@ hadoop jar MapReduce-1.0-SNAPSHOT.jar FlowCount_Partition.JobMain
 
 通过将关联的条件作为map输出的key,将两表满足join条件的数据并携带数据所来源的文件信息,发往同一个reduce task,在reduce中进行数据的串联 
 
-![030-Reduce端join操作](D:\BigData\Hadoop\3-Hadoop\images\030-Reduce端join操作.png)
+![030-Reduce端join操作](./images/030-Reduce端join操作.png)
 
-![031-Reduce端join操作问题](D:\BigData\Hadoop\3-Hadoop\images\031-Reduce端join操作问题.png)
+![031-Reduce端join操作问题](./images/031-Reduce端join操作问题.png)
 
 ### 1.数据准备
 
@@ -899,7 +899,7 @@ hadoop jar MapReduce-1.0-SNAPSHOT.jar Join_Reduce.JobMain
 先在mapper类中预先定义好小表,进行join
 引入实际场景中的解决方案:一次加载数据库或者用
 
-![032-Map端join操作](D:\BigData\Hadoop\3-Hadoop\images\032-Map端join操作.png)
+![032-Map端join操作](./images/032-Map端join操作.png)
 
 ### 1.数据准备
 
@@ -1069,7 +1069,7 @@ hadoop jar MapReduce-1.0-SNAPSHOT.jar Join_Map.JobMain
 
 求出哪些人两两之间有共同好友,及他俩的共同好友都有谁
 
-![033-求共同好友](D:\BigData\Hadoop\3-Hadoop\images\033-求共同好友.png)
+![033-求共同好友](./images/033-求共同好友.png)
 
 ## 第一个MapReduce
 
@@ -1350,7 +1350,7 @@ public class JobMain extends Configured implements Tool {
     @Override
     public int run(String[] args) throws Exception {
         //1:获取Job对象
-        Job job = Job.getInstance(super.getConf(), "commonfriends_step2_job");
+        Job job = Job.getInstance(super.getConf(), "commonfriends_step2");
         job.setJarByClass(JobMain.class);
 
         //2:设置job任务
