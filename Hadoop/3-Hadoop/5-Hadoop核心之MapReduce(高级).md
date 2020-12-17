@@ -442,3 +442,503 @@ public class JobMain extends Configured implements Tool {
     }
 }
 ```
+
+<br>
+
+# 三、MapReduce综合案例-学生成绩排序分组
+
+`数据内容(部分)`
+
+```shell
+1303	3001 	谢雨泽	95	96	98
+1303	3002 	陈倍光	95	96	96
+1303	3003 	王凭	95	96	98
+1304	4005 	刘唐欣	95	70	98
+1304	4006 	祁雨轩	95	96	98
+1304	4007	王博	95	96	98
+1305	5010	林硕	94	92	91
+1305	5011 	林清怡	95	65	98
+1305	5012 	成天	95	94	98
+1306	6010 	刘锦然	95	96	98
+1306	6011	周怡	95	75	98
+1306	6012	黄子安	83	32	70
+1307	7051 	蒋雨桐	84	69	83
+1307	7052 	向恺	95	35	47
+1307	7053	张昊	95	66	36
+```
+
+**注:完整数据下载地址**
+
+
+
+`数据字段说明`
+
+```shell
+班级   学号   姓名   语文   数学   英语
+1307  7026  邝卓男   95    88    98
+```
+
+## 问题一: 求每个学生的总分和平均分,并按总分降序排序 
+
+### 1.自定义类型和比较器
+
+```java
+package GradeRank.Question_One;
+
+import org.apache.hadoop.io.WritableComparable;
+
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+
+public class ScoreBean implements WritableComparable<ScoreBean> {
+    public ScoreBean(){
+        super();
+    }
+    public ScoreBean(String name,int sum,Double avg){
+        this.name=name;
+        this.sum=sum;
+        this.avg=avg;
+    }
+
+    private String name;
+    private int sum;
+    private double avg;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getSum() {
+        return sum;
+    }
+
+    public void setSum(int sum) {
+        this.sum = sum;
+    }
+
+    public double getAvg() {
+        return avg;
+    }
+
+    public void setAvg(double avg) {
+        this.avg = avg;
+    }
+
+    @Override
+    public String toString() {
+        return name +"\t"+ sum +"\t" + avg;
+    }
+
+    @Override
+    public int compareTo(ScoreBean scoreBean) {
+        return scoreBean.sum - this.sum;
+    }
+
+    @Override
+    public void write(DataOutput dataOutput) throws IOException {
+        dataOutput.writeUTF(name);
+        dataOutput.writeInt(sum);
+        dataOutput.writeDouble(avg);
+    }
+
+    @Override
+    public void readFields(DataInput dataInput) throws IOException {
+        this.name = dataInput.readUTF();
+        this.sum = dataInput.readInt();
+        this.avg = dataInput.readDouble();
+    }
+}
+```
+
+### 2.Mapper编写
+
+```java
+package GradeRank.Question_One;
+
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+
+import java.io.IOException;
+import java.text.DecimalFormat;
+
+public class ScoreMapper extends Mapper<LongWritable, Text, ScoreBean, Text> {
+    Text text = new Text();
+    @Override
+    protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+        String[] split = value.toString().split("\t");
+
+        String name = split[2];
+        int chinese = Integer.parseInt(split[3]);
+        int math = Integer.parseInt(split[4]);
+        int english = Integer.parseInt(split[5]);
+        int sum = chinese+math+english;
+        Double avg=(1.0)*sum/3;
+
+        ScoreBean scoreBean = new ScoreBean(name,sum,avg);
+        text.set(split[0]+"\t"+split[1]);
+
+        context.write(scoreBean, text);
+    }
+}
+```
+
+### 3.Reducer编写
+
+```java
+package GradeRank.Question_One;
+
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Reducer;
+
+import java.io.IOException;
+
+public class ScoreReducer extends Reducer<ScoreBean, Text, Text, ScoreBean> {
+    @Override
+    protected void reduce(ScoreBean key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+        for(Text v: values){
+            context.write(v,key);
+        }
+    }
+}
+```
+
+### 4.主类编写
+
+```java
+package GradeRank.Question_One;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
+
+public class JobMain extends Configured implements Tool {
+    @Override
+    public int run(String[] strings) throws Exception {
+        //1:创建job任务对象
+        Job job = Job.getInstance(super.getConf(), "graderank_question_one");
+        //如果打包运行出错,则需要加该配置
+        job.setJarByClass(JobMain.class);
+
+        //2:对job任务进行配置(八个步骤)
+        //第一步:设置输入类和输入的路径
+        job.setInputFormatClass(TextInputFormat.class);
+        //TextInputFormat.addInputPath(job, new Path("hdfs://node01:8020/input/graderank/question_one_input"));
+        TextInputFormat.addInputPath(job, new Path("file:///D:\\input\\graderank\\question_one_input"));
+
+        //第二步:设置Mapper类和数据类型（K2和V2）
+        job.setMapperClass(ScoreMapper.class);
+        job.setMapOutputKeyClass(GradeRank.Question_One.ScoreBean.class);
+        job.setMapOutputValueClass(Text.class);
+
+        //第三、四、五、六
+
+        //第七步：设置Reducer类和类型
+        job.setReducerClass(ScoreReducer.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(ScoreBean.class);
+
+        //第八步: 设置输出类和输出的路径
+        job.setOutputFormatClass(TextOutputFormat.class);
+        //TextOutputFormat.setOutputPath(job, new Path("hdfs://node01:8020/output/graderank/question_one_output"));
+        TextOutputFormat.setOutputPath(job, new Path("file:///D:\\output\\graderank\\question_one_output"));
+
+             /*
+        3:等待任务结束
+         */
+        boolean bl = job.waitForCompletion(true);
+
+        return bl?0:1;
+    }
+
+    public static void main(String[] args) throws Exception {
+        Configuration configuration = new Configuration();
+
+        //启动job任务
+        int run = ToolRunner.run(configuration, new JobMain(), args);
+        System.exit(run);
+    }
+}
+```
+
+## 问题二:求每个班级每一门课程的平均分，不同班级的结果输出到不同的结果文件
+
+### 1.自定义类型和比较器
+
+```java
+package GradeRank.Question_Two;
+
+import org.apache.hadoop.io.WritableComparable;
+
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+
+public class ScoreBean implements WritableComparable<ScoreBean> {
+
+    private String classname;
+    private String course;
+
+    public ScoreBean(){
+        super();
+    }
+
+    public ScoreBean(String classname, String course){
+        this.classname = classname;
+        this.course = course;
+    }
+
+    public String getClassname() {
+        return classname;
+    }
+
+    public void setClassname(String classname) {
+        this.classname = classname;
+    }
+
+    public String getCourse() {
+        return course;
+    }
+
+    @Override
+    public String toString() {
+        return classname + "\t" + course;
+    }
+
+    public void setCourse(String course) {
+        this.course = course;
+    }
+
+    @Override
+    public int compareTo(ScoreBean scoreBean) {
+        int temp = this.getClassname().compareTo(scoreBean.getClassname());
+        if(temp==0){
+            temp=this.getCourse().compareTo(scoreBean.getCourse());
+        }
+        return temp;
+    }
+
+    @Override
+    public void write(DataOutput dataOutput) throws IOException {
+        dataOutput.writeUTF(classname);
+        dataOutput.writeUTF(course);
+    }
+
+    @Override
+    public void readFields(DataInput dataInput) throws IOException {
+        this.classname = dataInput.readUTF();
+        this.course = dataInput.readUTF();
+    }
+}
+```
+
+### 2.Partitioner编写
+
+```java
+package GradeRank.Question_Two;
+
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.mapreduce.Partitioner;
+
+public class ScorePartition extends Partitioner<ScoreBean, IntWritable> {
+    @Override
+    public int getPartition(ScoreBean scoreBean, IntWritable intWritable, int i) {
+        if(scoreBean.getClassname().equals("1303")){
+            return 0;
+        }
+        if(scoreBean.getClassname().equals("1304")){
+            return 1;
+        }
+        if(scoreBean.getClassname().equals("1305")){
+            return 2;
+        }
+        if(scoreBean.getClassname().equals("1306")){
+            return 3;
+        }else{
+            return 4;
+        }
+
+    }
+}
+```
+
+### 3.Group编写
+
+```java
+package GradeRank.Question_Two;
+
+import org.apache.hadoop.io.WritableComparable;
+import org.apache.hadoop.io.WritableComparator;
+
+public class ScoreGroup extends WritableComparator {
+    public ScoreGroup() {
+        super(ScoreBean.class,true);
+    }
+
+    @Override
+    public int compare(WritableComparable a, WritableComparable b) {
+        ScoreBean first = (ScoreBean)a;
+        ScoreBean second = (ScoreBean)b;
+
+        int i= first.getClassname().compareTo(second.getClassname());
+        if(i==0){
+            return first.getCourse().compareTo(second.getCourse());
+        }
+        return i;
+    }
+}
+```
+
+### 4.Mapper编写
+
+```java
+package GradeRank.Question_Two;
+
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+
+import java.io.IOException;
+
+public class ScoreMapper extends Mapper<LongWritable, Text, ScoreBean, IntWritable> {
+    ScoreBean scoreBean = new ScoreBean();
+    @Override
+    protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+        String[] fields = value.toString().split("\t");
+        int score=0;
+        scoreBean.setClassname(fields[0]);
+        for(int i=3;i<fields.length;i++){
+            if(i==3){
+                scoreBean.setCourse("语文");
+                score=Integer.parseInt(fields[3]);
+                context.write(scoreBean,new IntWritable(score));
+            }
+            if(i==4){
+                scoreBean.setCourse("数学");
+                score=Integer.parseInt(fields[4]);
+                context.write(scoreBean,new IntWritable(score));
+            }else{
+                scoreBean.setCourse("英语");
+                score=Integer.parseInt(fields[5]);
+                context.write(scoreBean,new IntWritable(score));
+            }
+        }
+
+    }
+}
+```
+
+### 5.Reducer编写
+
+```java
+package GradeRank.Question_Two;
+
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Reducer;
+
+import java.io.IOException;
+
+public class ScoreReducer extends Reducer<ScoreBean, IntWritable, ScoreBean, Text> {
+    @Override
+    protected void reduce(ScoreBean key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+        int sum=0;
+        int count=0;
+
+        for(IntWritable v: values){
+            sum+=v.get();
+            count++;
+        }
+        context.write(key,new Text(""+1.0*sum/count));
+    }
+}
+```
+
+### 6.主类编写
+
+```java
+package GradeRank.Question_Two;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
+
+public class JobMain extends Configured implements Tool {
+    @Override
+    public int run(String[] strings) throws Exception {
+        //1:创建job任务对象
+        Job job = Job.getInstance(super.getConf(), "graderank_question_two");
+        //如果打包运行出错,则需要加该配置
+        job.setJarByClass(JobMain.class);
+
+        //2:对job任务进行配置(八个步骤)
+        //第一步:设置输入类和输入的路径
+        job.setInputFormatClass(TextInputFormat.class);
+        //TextInputFormat.addInputPath(job, new Path("hdfs://node01:8020/input/graderank/question_two_input"));
+        TextInputFormat.addInputPath(job, new Path("file:///D:\\input\\graderank\\question_two_input"));
+
+        //第二步:设置Mapper类和数据类型（K2和V2）
+        job.setMapperClass(ScoreMapper.class);
+        job.setMapOutputKeyClass(ScoreBean.class);
+        job.setMapOutputValueClass(IntWritable.class);
+
+        //第三步:设置分区
+        job.setPartitionerClass(ScorePartition.class);
+
+        //第四步:设置排序
+        //已经在ScoreBean设置
+
+        //第五步:设置规约
+        //默认
+
+        //第六步
+        //设置分组
+        job.setGroupingComparatorClass(ScoreGroup.class);
+        job.setNumReduceTasks(5);
+
+        //第七步：设置Reducer类和类型
+        job.setReducerClass(ScoreReducer.class);
+        job.setOutputKeyClass(ScoreBean.class);
+        job.setOutputValueClass(Text.class);
+
+        //第八步: 设置输出类和输出的路径
+        job.setOutputFormatClass(TextOutputFormat.class);
+        //TextOutputFormat.setOutputPath(job, new Path("hdfs://node01:8020/output/graderank/question_two_output"));
+        TextOutputFormat.setOutputPath(job, new Path("file:///D:\\output\\graderank\\question_two_output"));
+
+             /*
+        3:等待任务结束
+         */
+        boolean bl = job.waitForCompletion(true);
+
+        return bl?0:1;
+    }
+
+    public static void main(String[] args) throws Exception {
+        Configuration configuration = new Configuration();
+
+        //启动job任务
+        int run = ToolRunner.run(configuration, new JobMain(), args);
+        System.exit(run);
+    }
+}
+```

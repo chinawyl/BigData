@@ -1,6 +1,6 @@
 # 一、MapReduce综合案例-流量统计
 
-## 需求一:统计求和 
+## 需求一:统计求和
 
 `具体需求`
 
@@ -369,7 +369,7 @@ public class FlowBean implements WritableComparable<FlowBean> {
 }
 ```
 
-### 3.定义FlowMappe
+### 3.定义FlowMapper
 
 ```java
 package FlowCount_Sort;
