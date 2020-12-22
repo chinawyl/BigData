@@ -664,7 +664,7 @@ jps
 ##### 3.6.2 进入hadoop目录(node01)
 
 ```shell
-cd /usr/BigData/hadoop-2.7.5/ 
+cd /usr/BigData/hadoop-2.7.5/
 ```
 
 ##### 3.6.3 格式化(node01)
