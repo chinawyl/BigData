@@ -86,16 +86,24 @@ create 'ORDER_INFO','C1'
 describe 'ORDER_INFO'
 ```
 
-#### 4.3 删除表
+#### 4.3 变更表信息
 
-##### 4.3.1 禁用表
+```sql
+alter 'student',{NAME=>'info',VERSIONS=>5} --变更列族版本
+
+get 'student','1001',{COLUMN=>'info:name',VERSIONS=>3} --查看当前列最新3个版本数据信息
+```
+
+#### 4.4 删除表
+
+##### 4.4.1 禁用表
 
 ```sql
 -- disable '表名'
 disable 'ORDER_INFO'
 ```
 
-##### 4.3.2 删除表
+##### 4.4.2 删除表
 
 ```sql
 -- drop '表名'

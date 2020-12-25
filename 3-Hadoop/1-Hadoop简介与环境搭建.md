@@ -715,7 +715,7 @@ sbin/start-yarn.sh
 
   **Jps**、**QuorumPeerMain** 、**DataNode**、 **NodeManager** 
 
-##### 3.6.6 启动历史记录(node01)
+##### 3.6.6 启动历史任务记录(node01)
 
 ```shell
 sbin/mr-jobhistory-daemon.sh start historyserver
@@ -735,9 +735,9 @@ sbin/mr-jobhistory-daemon.sh start historyserver
 
   **Jps**、**QuorumPeerMain** 、**DataNode**、 **NodeManager** 
 
-### 3.7web界面访问Hadoop
+### 3.7 web界面访问Hadoop
 
-##### 3.7.1配置Windows环境
+##### 3.7.1 配置Windows环境
 
 - Windows打开hosts文件
 
@@ -751,15 +751,15 @@ sbin/mr-jobhistory-daemon.sh start historyserver
 
    192.168.146.123	node03 
 
-##### 3.7.2查看hdfs的web界面
+##### 3.7.2 查看hdfs的web界面
 
 http://node01:50070
 
-##### 3.7.2查看yarn集群的web界面
+##### 3.7.3 查看yarn集群的web界面
 
 http://node01:8088
 
-##### 3.7.3查看完成的历史任务的web界面
+##### 3.7.4 查看完成的历史任务的web界面
 
 http://node01:19888
 
