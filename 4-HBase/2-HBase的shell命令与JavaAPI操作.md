@@ -16,19 +16,58 @@
 hbase shell
 ```
 
-#### 2.2 查看帮助命令
+#### 2.2 查看帮助
 
 ```sql
 help
 ```
 
-#### 2.3 查看当前数据库有那些表
+#### 2.3 查看服务器状态
+
+```sql
+status
+```
+
+#### 2.4 显示HBase当前用户
+
+```sql
+whoami
+```
+
+#### 2.5 查看当前数据库有那些表
 
 ```sql
 list
 ```
 
-#### 2.4 退出HBase客户端
+#### 2.6 检查表是否存在
+
+```shell
+exits
+```
+
+#### 2.7 检查表是否被禁用或启用
+
+```sql
+is_enabled --是否启用
+
+is_disabled --是否启用
+```
+
+#### 2.8 改变表和列蔟的模式
+
+```sql
+--创建一个USER_INFO表，两个列蔟C1、C2
+create 'USER_INFO', 'C1', 'C2'
+
+--新增列蔟C3
+alter 'USER_INFO', 'C3'
+
+--删除列蔟C3
+alter 'USER_INFO', 'delete' => 'C3'
+```
+
+#### 2.9 退出HBase客户端
 
 ```sql
 exit
@@ -72,9 +111,9 @@ drop_namespace 'bigdata'
 #### 4.1 创建表
 
 ```sql
--- create '表名','列蔟名'...
+-- create "表名","列蔟名"...
 
-create 'ORDER_INFO','C1'
+create "ORDER_INFO","C1"
 ```
 
 **注:没带命名空间，默认为default命名空间**
@@ -82,7 +121,7 @@ create 'ORDER_INFO','C1'
 #### 4.2 查看表结构
 
 ```sql
--- describe '表名'
+-- describe "表名"
 describe 'ORDER_INFO'
 ```
 
@@ -102,6 +141,8 @@ get 'student','1001',{COLUMN=>'info:name',VERSIONS=>3} --查看当前列最新3�
 -- disable '表名'
 disable 'ORDER_INFO'
 ```
+
+**注:启用表为enable**
 
 ##### 4.4.2 删除表
 
@@ -274,6 +315,174 @@ scan 'ORDER_INFO',{STARTROW => '02602f66-adc7-40d4-8485-76b5632b5b53'} --从起�
 1002
 1003
 ```
+
+## 8.过滤操作
+
+HBase中的过滤器也是基于Java开发的，只不过在Shell中，我们是使用基于JRuby的语法来实现的交互式查询。以下是HBase 2.2的JAVA API文档
+
+http://hbase.apache.org/2.2/devapidocs/index.html
+
+#### 8.1 查看HBase Shell过滤器
+
+```sql
+show_filters
+```
+
+#### 8.2 常见过滤器
+
+##### 8.2.1 rowkey过滤器
+
+| rowkey过滤器        |                                                    |
+| ------------------- | -------------------------------------------------- |
+| RowFilter           | 实现行键字符串的比较和过滤                         |
+| PrefixFilter        | rowkey前缀过滤器                                   |
+| KeyOnlyFilter       | 只对单元格的键进行过滤和显示，不显示值             |
+| FirstKeyOnlyFilter  | 只扫描显示相同键的第一个单元格，其键值对会显示出来 |
+| InclusiveStopFilter | 替代 ENDROW 返回终止条件行                         |
+
+##### 8.2.2 列过滤器
+
+| 列过滤器                   |                                    |
+| -------------------------- | ---------------------------------- |
+| FamilyFilter               | 列簇过滤器                         |
+| QualifierFilter            | 列标识过滤器，只显示对应列名的数据 |
+| ColumnPrefixFilter         | 对列名称的前缀进行过滤             |
+| MultipleColumnPrefixFilter | 可以指定多个前缀对列名称过滤       |
+| ColumnRangeFilter          | 过滤列名称的范围                   |
+
+##### 8.2.3 值过滤器
+
+| 值过滤器                       |                                      |
+| :----------------------------- | ------------------------------------ |
+| ValueFilter                    | 值过滤器，找到符合值条件的键值对     |
+| SingleColumnValueFilter        | 在指定的列蔟和列中进行比较的值过滤器 |
+| SingleColumnValueExcludeFilter | 排除匹配成功的值                     |
+
+##### 8.2.4 其他过滤器  
+
+| 其他过滤器             |                                                             |
+| ---------------------- | ----------------------------------------------------------- |
+| ColumnPaginationFilter | 对一行的所有列分页，只返回 [offset,offset+limit] 范围内的列 |
+| PageFilter             | 对显示结果按行进行分页显示                                  |
+| TimestampsFilter       | 时间戳过滤，支持等值，可以设置多个时间戳                    |
+| ColumnCountGetFilter   | 限制每个逻辑行返回键值对的个数，在 get 方法中使用           |
+| DependentColumnFilter  | 允许用户指定一个参考列或引用列来过滤其他列的过滤器          |
+
+#### 8.3 过滤器用法
+
+**scan '表名', { Filter => "过滤器(比较运算符, '比较器表达式')” }**
+
+##### 8.3.1 比较运算符
+
+| 比较运算符 | 描述     |
+| ---------- | -------- |
+| =          | 等于     |
+| >          | 大于     |
+| >=         | 大于等于 |
+| <          | 小于     |
+| <=         | 小于等于 |
+| !=         | 不等于   |
+
+##### 8.3.2 比较器
+
+| 比较器                 | 描述             |
+| ---------------------- | ---------------- |
+| BinaryComparator       | 匹配完整字节数组 |
+| BinaryPrefixComparator | 匹配字节数组前缀 |
+| BitComparator          | 匹配比特位       |
+| NullComparator         | 匹配空值         |
+| RegexStringComparator  | 匹配正则表达式   |
+| SubstringComparator    | 匹配子字符串     |
+
+##### 8.3.3 比较器表达式
+
+基本语法：比较器类型:比较器的值  
+
+| 比较器                 | 表达式语言缩写         |
+| ---------------------- | ---------------------- |
+| BinaryComparator       | binary:值              |
+| BinaryPrefixComparator | binaryprefix:值        |
+| BitComparator          | bit:值                 |
+| NullComparator         | null                   |
+| RegexStringComparator  | regexstring:正则表达式 |
+| SubstringComparator    | substring:值           |
+
+#### 8.4 过滤举例
+
+##### 8.4.1 使用RowFilter查询指定订单ID的数据
+
+`需求`
+
+只查询订单的ID为：02602f66-adc7-40d4-8485-76b5632b5b53的数据 
+
+`查看Java API`
+
+![010-过滤操作1](D:\BigData\4-HBase\images\010-过滤操作1.png)
+
+通过上图，可以分析得到，RowFilter过滤器接受两个参数
+
+- op——比较运算符
+
+- rowComparator——比较器
+
+`命令`
+
+```sql
+scan 'ORDER_INFO', {FILTER => "RowFilter(=,'binary:02602f66-adc7-40d4-8485-76b5632b5b53')"}
+```
+
+##### 8.4.2 使用列过滤器查询指定订单ID的数据
+
+`需求`
+
+查询状态为[已付款]的订单
+
+`查看Java API`
+
+![011-过滤操作2](D:\BigData\4-HBase\images\011-过滤操作2.png)
+
+需要传入四个参数
+
+- 列簇
+
+- 列标识（列名）
+
+- 比较运算符
+
+- 比较器
+
+`命令`
+
+```sql
+scan 'ORDER_INFO', {FILTER => "SingleColumnValueFilter('C1', 'STATUS', =, 'binary:已付款')", FORMATTER => 'toString'}
+```
+
+注意:
+
+- 列名STATUS的大小写一定要对！此处使用的是大写！
+- 列名写错了查不出来数据，但HBase不会报错，因为HBase是无模式的
+
+##### 8.4.3 使用多个过滤器共同来实现查询
+
+`需求`
+
+查询支付方式为1，且金额大于3000的订单  
+
+`查看Java API`
+
+此处需要使用多个过滤器共同来实现查询，多个过滤器，可以使用AND或者OR来组合多个过滤器完成查询
+
+`命令`
+
+```sql
+scan 'ORDER_INFO', {FILTER => "SingleColumnValueFilter('C1', 'PAYWAY', = , 'binary:1') AND SingleColumnValueFilter('C1', 'PAY_MONEY', > , 'binary:3000')", FORMATTER => 'toString'}
+```
+
+注意:
+
+- HBase shell中**默认比较是字符串比较**，所以如果是比较数值类型的，会出现不准确的情况
+
+- 例如:在字符串比较中4000是比100000大的
 
 <br>
 
