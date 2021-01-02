@@ -415,7 +415,7 @@ show_filters
 
 `查看Java API`
 
-![010-过滤操作1](D:\BigData\4-HBase\images\010-过滤操作1.png)
+![010-过滤操作1](./images/010-过滤操作1.png)
 
 通过上图，可以分析得到，RowFilter过滤器接受两个参数
 
@@ -437,7 +437,7 @@ scan 'ORDER_INFO', {FILTER => "RowFilter(=,'binary:02602f66-adc7-40d4-8485-76b56
 
 `查看Java API`
 
-![011-过滤操作2](D:\BigData\4-HBase\images\011-过滤操作2.png)
+![011-过滤操作2](./images/011-过滤操作2.png)
 
 需要传入四个参数
 
