@@ -72,11 +72,11 @@ Kylin一个cube分析工具，底层的数据就是存储在HBase之中，不少
 
 ##### 4.1 逻辑结构
 
-![001-逻辑结构](D:\BigData\4-HBase\images\001-逻辑结构.png)
+![001-逻辑结构](./images/001-逻辑结构.png)
 
 ##### 4.2 物理存储结构
 
-![002-物理存储结构](D:\BigData\4-HBase\images\002-物理存储结构.png)
+![002-物理存储结构](./images/002-物理存储结构.png)
 
 
 
@@ -108,11 +108,11 @@ Kylin一个cube分析工具，底层的数据就是存储在HBase之中，不少
 
 ##### 5.1 基本架构
 
-![003-HBase基本架构](D:\BigData\4-HBase\images\003-HBase基本架构.png)
+![003-HBase基本架构](./images/003-HBase基本架构.png)
 
 ##### 5.2 完整架构
 
-![004-HBase完整架构](D:\BigData\4-HBase\images\004-HBase完整架构.png)
+![004-HBase完整架构](./images/004-HBase完整架构.png)
 
 `Client `
 
@@ -218,7 +218,7 @@ Kylin一个cube分析工具，底层的数据就是存储在HBase之中，不少
 
 ### 6.HBase写流程
 
-![005-HBase写流程](D:\BigData\4-HBase\images\005-HBase写流程.png)
+![005-HBase写流程](./images/005-HBase写流程.png)
 
 - Client先访问zookeeper，获取hbase:meta表位于哪个RegionServer
 - 访问对应的RegionServer，获取hbase:meta表，根据读请求的namespace:table/rowkey，查询出目标数据位于哪个RegionServer中的哪个Region中。并将该table的region信息以及meta表的位置信息缓存在客户端的meta cache，方便下次访问 
@@ -230,7 +230,7 @@ Kylin一个cube分析工具，底层的数据就是存储在HBase之中，不少
 
 ### 7.HBase读流程
 
-![006-HBase读流程](D:\BigData\4-HBase\images\006-HBase读流程.png)
+![006-HBase读流程](./images/006-HBase读流程.png)
 
 - Client 先访问zookeeper，获取hbase:meta表位于哪个RegionServer
 - 访问对应的RegionServer，获取hbase:meta表，根据读请求的namespace:table/rowkey，查询出目标数据位于哪个RegionServer中的哪个Region中。并将该table的region信息以及meta表的位置信息缓存在客户的meta cache，方便下次访问 
@@ -241,7 +241,7 @@ Kylin一个cube分析工具，底层的数据就是存储在HBase之中，不少
 
 ### 8.HBase内存存储刷新(MemStore Flush)
 
-![007-HBase内存存储刷新](D:\BigData\4-HBase\images\007-HBase内存存储刷新.png)
+![007-HBase内存存储刷新](./images/007-HBase内存存储刷新.png)
 
 ##### 8.1 当memstroe的大小达到了
 
@@ -283,7 +283,7 @@ region会按照时间顺序依次进行刷写，直到WAL文件数量减小到**
 
 ### 9.HBase文件合并(StoreFile Compaction)
 
-![008-HBase合并文件](D:\BigData\4-HBase\images\008-HBase合并文件.png)
+![008-HBase合并文件](./images/008-HBase合并文件.png)
 
 由于memstore每次刷写都会生成一个新的HFile，且同一个字段的不同版本(timestamp)和不同类型(Put/Delete)有可能会分布在不同的HFile中，因此查询时需要遍历所有的HFile。为了减少HFile的个数，以及清理掉过期和删除的数据，会进行StoreFile Compaction
 
@@ -300,7 +300,7 @@ Compaction 分为两种，分别是**Minor Compaction**和**Major Compaction**
 
 ### 10.HBase文件拆分(Region Split)
 
-![009-HBase拆分文件](D:\BigData\4-HBase\images\009-HBase拆分文件.png)
+![009-HBase拆分文件](./images/009-HBase拆分文件.png)
 
 默认情况下，每个Table起初只有一个Region，随着数据的不断写入，Region会自动进行拆分。刚拆分时，两个子 Region都位于当前的RegionServer，为了负载均衡，HMaster有可能会将某个Region转移给其他的RegionServer
 
