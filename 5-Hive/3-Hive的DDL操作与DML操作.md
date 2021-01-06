@@ -510,96 +510,98 @@ select * from dept_partition2 where month='201709' and day='13';
 
 - 方式二:上传数据后添加分区
 
-上传数据
+  - 上传数据
 
-dfs -mkdir -p /user/hive/warehouse/dept_partition2/month=201709/day=11;
+    ```shell
+    hdfs dfs -mkdir -p /user/hive/warehouse/dept_partition2/month=201709/day=11;
+    
+    hdfs dfs -put /usr/BigData/hadoop-2.7.5/testdata/dept.txt /user/hive/warehouse/dept_partition2/month=201709/day=11;
+    ```
 
-dfs -put /opt/module/datas/dept.txt /user/hive/warehouse/dept_partition2/month=201709/day=11;
+  - 执行添加分区
 
- 执行添加分区
+    ```mysql
+    alter table dept_partition2 add partition(month='201709',day='11');
+    ```
 
-alter table dept_partition2 add partition(month='201709',day='11');
+  - 查询数据
 
- 查询数据
+    ```mysql
+    select * from dept_partition2 where month='201709' and day='11';
+    ```
 
-select * from dept_partition2 where month='201709' and day='11';
+- 方式三:创建文件夹后load数据到分区
 
-方式三：创建文件夹后load数据到分区
+  - 创建目录
 
-创建目录
+    ```shell
+    hdfs dfs -mkdir -p /user/hive/warehouse/dept_partition2/month=201709/day=10;
+    ```
 
-dfs -mkdir -p /user/hive/warehouse/dept_partition2/month=201709/day=10;
+  - 上传数据
 
-上传数据
+    ```mysql
+    load data local inpath '/usr/BigData/hadoop-2.7.5/testdata/dept.txt' into table dept_partition2 partition(month='201709',day='10');
+    ```
 
-load data local inpath '/opt/module/datas/dept.txt' into table dept_partition2 partition(month='201709',day='10');
+  - 查询数据
 
-查询数据
-
-select * from dept_partition2 where month='201709' and day='10';
+    ```mysql
+    select * from dept_partition2 where month='201709' and day='10';
+    ```
 
 ### 10.修改表
 
 ##### 10.1 重命名表
 
-1．语法
+`语法`
 
+```mysql
 ALTER TABLE table_name RENAME TO new_table_name
+```
 
-2．实操案例
+`实操案例`
 
-hive (default)> alter table dept_partition2 rename to dept_partition3;
+```mysql
+alter table dept_partition2 rename to dept_partition3;
+```
 
-##### 10.2 增加、修改和删除表分区
+##### 10.2 增加/修改/替换列信息
 
-详见4.6.1分区表基本操作。
+`语法`
 
-##### 10.3 增加/修改/替换列信息
-
-1．语法
-
-​    更新列
-
+```mysql
+#增加列
 ALTER TABLE table_name CHANGE [COLUMN] col_old_name col_new_name column_type [COMMENT col_comment] [FIRST|AFTER column_name]
 
-增加和替换列
-
+#增加和替换列
 ALTER TABLE table_name ADD|REPLACE COLUMNS (col_name data_type [COMMENT col_comment], ...) 
+```
 
-注：ADD是代表新增一字段，字段位置在所有列后面(partition列前)，REPLACE则是表示替换表中所有字段。
+**注:ADD是代表新增一字段，字段位置在所有列后面(partition列前)，REPLACE则是表示替换表中所有字段**
 
-2．实操案例
+`实操案例`
 
-（1）查询表结构
+- 增加列
 
-hive> desc dept_partition;
+  ```mysql
+  alter table dept_partition add columns(deptdesc string);
+  ```
 
-（2）添加列
+- 更新列
 
-hive (default)> alter table dept_partition add columns(deptdesc string);
+  ```mysql
+  alter table dept_partition change column deptdesc desc int;
+  ```
 
-（3）查询表结构
+- 替换列
 
-hive> desc dept_partition;
-
-（4）更新列
-
-hive (default)> alter table dept_partition change column deptdesc desc int;
-
-（5）查询表结构
-
-hive> desc dept_partition;
-
-（6）替换列
-
-hive (default)> alter table dept_partition replace columns(deptno string, dname
-
- string, loc string);
-
-（7）查询表结构
-
-hive> desc dept_partition;
+  ```mysql
+  alter table dept_partition replace columns(deptno string, dname string, loc string);
+  ```
 
 ### 11.删除表
 
-hive (default)> drop table dept_partition;
+```mysql
+drop table dept_partition;
+```
