@@ -241,7 +241,7 @@ use hives;
 create table tests(id int);
 ```
 
-![004-默认数据库创建](D:\BigData\5-Hive\images\004-默认数据库创建.png)
+![004-默认数据库创建](./images/004-默认数据库创建.png)
 
 **注:tests直接创建在hive4目录层级，没有hives目录层级**
 
@@ -579,11 +579,11 @@ load data local inpath '/usr/BigData/hadoop-2.7.5/testdata/dept.txt' into table 
 
 - 分区表目录
 
-![005-创建分区表的目录](D:\BigData\5-Hive\images\005-创建分区表的目录.png)
+![005-创建分区表的目录](./images/005-创建分区表的目录.png)
 
 - 分区表数据
 
-![006-创建分区表的数据](D:\BigData\5-Hive\images\006-创建分区表的数据.png)
+![006-创建分区表的数据](./images/006-创建分区表的数据.png)
 
 `查询分区表中数据`
 
