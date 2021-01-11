@@ -743,9 +743,91 @@ select * from dept_partition2 where month='201709' and day='13';
     select * from dept_partition2 where month='201709' and day='10';
     ```
 
-### 10.修改表
+### 10.分桶表
 
-##### 10.1 重命名表
+##### 10.1 分区和分桶区别
+
+`分区`
+
+针对的是**数据的存储路径**，提供一个隔离数据和优化查询的便利方式，但并非所有的数据集都可形成合理的分区
+
+`分桶`
+
+针对的是**数据文件**，是将数据集分解成更容易管理的若干部分的另一个技术
+
+##### 10.2 分桶表基本操作
+
+`基本属性设置`
+
+```mysql
+#开启分桶功能
+set hive.enforce.bucketing=true;
+
+#设置Reduce个数，-1为有多少个桶就有多少Reduce
+set mapreduce.job.reduces=-1;
+```
+
+`创建分桶表`
+
+```mysql
+create table stu_buck(id int, name string)
+clustered by(id) 
+into 4 buckets
+row format delimited fields terminated by '\t';
+```
+
+`创建普通中间表`
+
+```mysql
+create table stu(id int, name string)
+row format delimited fields terminated by '\t';
+```
+
+`插入数据到普通中间表`
+
+```mysql
+load data local inpath '/usr/BigData/hadoop-2.7.5/testdata/student.txt' into table stu;
+```
+
+`插入数据到分桶表(子查询)`
+
+```mysql
+insert into table stu_buck
+select id, name from stu;
+```
+
+**注:直接Load不行，必须创建中间表利用子查询调动MapReduce插入**
+
+查询分桶表数据`
+
+```mysql
+select * from stu_buck;
+```
+
+**注:发现数据根据id分成四大块**
+
+![007-创建分桶表的数据](D:\BigData-master\5-Hive\images\007-创建分桶表的数据.png)
+
+##### 10.3 分桶抽样查询
+
+- 对于非常大的数据集，有时用户需要使用的是一个具有代表性的查询结果而不是全部结果。Hive可以通过**对表抽样**来满足这个需求。
+
+- 查询表stu_buck中的数据
+
+  ```mysql
+  select * from stu_buck tablesample(bucket 1 out of 4 on id);
+  ```
+
+- 注:tablesample是抽样语句，语法:TABLESAMPLE(BUCKET x OUT OF y) 
+
+  - y必须是table总bucket数的倍数或者因子。hive根据y的大小，决定抽样的比例。例如，table总共分了4份，当y=2时，抽取(4/2=)2个bucket的数据，当y=8时，抽取(4/8=)1/2个bucket的数据。
+
+  - x表示从哪个bucket开始抽取，如果需要取多个分区，以后的分区号为当前分区号加上y。例如，table总bucket数为4，tablesample(bucket 1 out of 2)，表示总共抽取（4/2=）2个bucket的数据，抽取第1(x)个和第3(x+y)个bucket的数据。
+  - **x的值必须小于等于y的值**
+
+### 11.修改表
+
+##### 11.1 重命名表
 
 `语法`
 
@@ -759,7 +841,7 @@ ALTER TABLE table_name RENAME TO new_table_name
 alter table dept_partition2 rename to dept_partition3;
 ```
 
-##### 10.2 增加/修改/替换列信息
+##### 11.2 增加/修改/替换列信息
 
 `语法`
 
@@ -798,8 +880,197 @@ ALTER TABLE table_name ADD|REPLACE COLUMNS (col_name data_type [COMMENT col_comm
 - 替换列如果是多列替换成一列，查询时只显示第一列
 - 替换列如果是一列替换成多列，查询时不存在的列就为空
 
-### 11.删除表
+### 12.删除表
 
 ```mysql
 drop table dept_partition;
 ```
+
+<br>
+
+# 三、Hive的DML操作
+
+### 1.数据导入
+
+##### 1.1 向表中装载数据(Load)
+
+`语法`
+
+```mysql
+load data [local] inpath '/opt/module/datas/student.txt' overwrite | into table student [partition (partcol1=val1,…)];
+```
+
+`参数`
+
+- load data:表示加载数据
+- local:表示从本地加载数据到hive表；否则从HDFS加载数据到hive表
+- inpath:表示加载数据的路径
+- overwrite:表示覆盖表中已有数据，否则表示追加
+- into table:表示加载到哪张表
+- student:表示具体的表
+- partition:表示上传到指定分区
+
+`创建一张表`
+
+```mysql
+create table student(id string, name string) row format delimited fields terminated by '\t';
+```
+
+`1.1.1 加载本地文件到hive`
+
+```mysql
+load data local inpath '/usr/BigData/hadoop-2.7.5/testdata/student.txt' into table default.student;
+```
+
+`1.1.2 加载HDFS文件到hive中`
+
+- 上传文件到HDFS
+
+  ```mysql
+  dfs -put /usr/BigData/hadoop-2.7.5/testdata/student.txt /user;
+  ```
+
+- 加载HDFS上数据
+
+  ```mysql
+  load data inpath '/user/student.txt' into table default.student;
+  ```
+
+`1.1.3 加载数据覆盖表中已有的数据`
+
+```mysql
+load data inpath '/user/student.txt' overwrite into table default.student;
+```
+
+##### 1.2 通过查询语句向表中插入数据(Insert)
+
+`创建一张分区表`
+
+```mysql
+create table student(id int, name string) partitioned by (month string) row format delimited fields terminated by '\t';
+```
+
+`1.2.1 基本插入数据`
+
+```mysql
+insert into table student partition(month='201709') values(1,'wangwu');
+```
+
+`1.2.2 基本模式插入(根据单张表查询结果)`
+
+```mysql
+insert overwrite table student partition(month='201708')
+select id, name from student where month='201709';
+```
+
+`1.2.3 多插入模式(根据多张表查询结果)`
+
+```mysql
+from student
+insert overwrite table student partition(month='201707')
+select id, name where month='201709'
+insert overwrite table student partition(month='201706')
+select id, name where month='201709';
+```
+
+##### 1.3 查询语句中创建表并加载数据(As Select)
+
+```mysql
+create table if not exists student3
+as select id, name from student;
+```
+
+##### 1.4 创建表时通过Location指定加载数据路径
+
+`1.4.1 创建表并指定在hdfs上的位置`
+
+```mysql
+create table if not exists student5(
+id int, name string
+)
+row format delimited fields terminated by '\t'
+location '/user/hive/warehouse/student5';
+```
+
+`1.4.2 上传数据到hdfs上`
+
+```mysql
+dfs -put /opt/module/datas/student.txt /user/hive/warehouse/student5;
+```
+
+##### 1.5 Import数据到指定Hive表中
+
+```mysql
+import table student2 partition(month='201709') from
+'/user/hive/warehouse/export/student';
+```
+
+**注:先用export导出后，再将数据导入**
+
+### 2.数据导出
+
+##### 2.1 Insert导出
+
+`将查询的结果导出到本地`
+
+```mysql
+insert overwrite local directory '/usr/BigData/hadoop-2.7.5/testdata/student'
+select * from student;
+```
+
+`将查询的结果格式化导出到本地`
+
+```mysql
+insert overwrite local directory '/usr/BigData/hadoop-2.7.5/testdata/student1'
+ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t'
+select * from student;
+```
+
+`将查询的结果格式化导出到HDFS上(没有local)`
+
+```mysql
+insert overwrite directory '/user'
+ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t'
+select * from student;
+```
+
+##### 2.2 Hadoop命令导出到本地
+
+```mysql
+dfs -get /user/hive/warehouse/student/month=201709/000000_0
+/usr/BigData/hadoop-2.7.5/testdata/student3.txt;
+```
+
+##### 2.3 Hive Shell 命令导出
+
+`基本语法`
+
+```shell
+hive -f/-e 执行语句或者脚本 > file
+```
+
+`实操案例(hive目录下)`
+
+```shell
+bin/hive -e 'select * from default.student;' >
+/usr/BigData/hadoop-2.7.5/testdata/student4.txt;
+```
+
+##### 2.4 Export导出到HDFS上
+
+```mysql
+export table default.student to
+'/user/hive/warehouse/export/student';
+```
+
+##### 2.5 Sqoop导出
+
+后面再说
+
+### 3 清除表中数据(Truncate)
+
+```mysql
+truncate table student;
+```
+
+**注:Truncate只能删除管理表，不能删除外部表中数据**
